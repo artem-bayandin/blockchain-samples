@@ -11,6 +11,76 @@ import 'github.com/smartcontractkit/chainlink/blob/master/contracts/src/v0.8/VRF
 // on-chain price oracle (Chainlink)
 import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
+
+interface IChainlinkDataFeeder {
+    function getEthEquivalent(address _token, uint256 _amount) external returns(uint256);
+}
+
+
+abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
+    function getEthEquivalent(address _token, uint256 _amount)
+    override
+    public
+    returns(uint256) {
+        return _amount;
+    }
+
+    function _getPriceFromChainlink(address _proxy)
+    private
+    view
+    returns (int256 price) {
+        (, price, , , ) = AggregatorV3Interface(_proxy).latestRoundData();
+    }
+
+    /*
+    function _getPriceFromChainlink(address _proxy)
+    private
+    view
+    returns (
+      uint80 roundId,
+      int256 price,
+      uint256 startedAt,
+      uint256 updatedAt,
+      uint80 answeredInRound
+    ) {
+        (
+            roundId, 
+            price,
+            startedAt,
+            updatedAt,
+            answeredInRound
+        ) = AggregatorV3Interface(_proxy).latestRoundData();
+    }
+    */
+}
+
+
+struct ChainlinkDataFeedTokenRecord {
+    address token;
+    string label;
+    address proxy;
+    uint8 decimals;
+}
+
+
+contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
+    ChainlinkDataFeedTokenRecord[] allowedTokens;
+    
+    constructor () {
+        allowedTokens.push(ChainlinkDataFeedTokenRecord(address(0), "", address(0), 0));
+    }
+}
+
+
+contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
+    ChainlinkDataFeedTokenRecord[] allowedTokens;
+    
+    constructor () {
+        allowedTokens.push(ChainlinkDataFeedTokenRecord(address(0), "", address(0), 0));
+    }
+}
+
+
 /// @title Raffle game
 /// @notice Kinda lottery game, when a user has to buy ticket to participate,
 /// @notice and his chance to win equals to the ETH value of ERC20 tokens, which a player has transferred to the game.
@@ -92,7 +162,15 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @dev winner => timestamp => WinnerRecord
     mapping(address => mapping(uint256 => WinnerRecord)) private winners;
 
+    /// @notice reentrancy lock for a player to be able to step into deposit func only once
+    address[] playersLockedToDeposit;
+    /// @notice reentrancy corresponding mapping
+    mapping(address => bool) depositLocks;
+    
+    IChainlinkDataFeeder private immutable priceOracle;
+
     event PaymentReceived(address indexed msgSender, uint256 msgValue);
+    event Deposited(address indexed msgSender, address indexed token, uint256 amount, uint256 chanceIncrement, uint256 totalChance, uint256 timestamp);
     event RollingManual(uint256 timestamp);
     event RollingWithOracle(uint256 timestamp);
     event RandomnessRequested(uint256 timestamp, bytes32 indexed randomnessRequestId);
@@ -126,28 +204,47 @@ contract Raffle is Ownable, VRFConsumerBase {
         , bytes32 _randomnessKeyHash
         , uint256 _randomnessFee
     )
-    VRFConsumerBase(_vrfCoordinator, _linkToken) {
+    VRFConsumerBase(_vrfCoordinator, _linkToken)
+    {
         maxPlayers = _maxPlayers;
         maxTokens = _maxTokens;
         ticketFee = _ticketFee;
         randomnessKeyHash = _randomnessKeyHash;
         randomnessFee = _randomnessFee;
+        priceOracle = new ChainlinkDataFeederInEthMainnet();
     }
 
     /// @dev Ctor for RinkebyNetwork (for simplicity)
     /*
     constructor()
-    VRFConsumerBase(0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, 0x01BE23585060835E02B77ef475b0Cc51aA1e0709) {
+    VRFConsumerBase(0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, 0x01BE23585060835E02B77ef475b0Cc51aA1e0709)
+    {
         maxPlayers = 100;
         maxTokens = 100;
         ticketFee = 0;
         randomnessKeyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
         randomnessFee = 1 * 10 ** 17; // 0.1 LINK
+        priceOracle = new ChainlinkDataFeederInRinkeby();
     }
     */
 
+    modifier noDepositReentrancy() {
+        address msgSender = msg.sender;
+        require(!_isUserLockedToDeposit(msgSender), "Reentrancy detected.");
+        _lockUserToDeposit(msgSender);
+        _;
+        _unlockUserToDeposit(msgSender);
+    }
+
+    modifier requireGameStatus(GameStatus _expected) {
+        require(gameStatus == _expected, "Invalid current game status.");
+        _;
+    }
+
     /// @notice allows contract to receive eth
-    receive() external payable {
+    receive()
+    external
+    payable {
         emit PaymentReceived(msg.sender, msg.value);
     }
 
@@ -155,14 +252,51 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     function deposit(address _token, uint256 _amount)
     public
-    payable { // TODO: require valid game status - GameStatus.GAMING
-        // place a bid
+    payable
+    noDepositReentrancy
+    requireGameStatus(GameStatus.GAMING) {
+        // fetch data from msg.*
+        address msgSender = msg.sender;
+        uint256 msgValue = msg.value;
+        
+        // require-s
+        require(msgValue >= ticketFee, "You should pay to play.");
+        require(IERC20(_token).allowance(msgSender, address(this)) >= _amount, "Please allow to transfer tokens.");
+        require(players.length < maxPlayers, "All seats are taken, wait for rolling.");
+
+        // if player is not yet registered - register it
+        if (!activePlayers[msgSender]) {
+            activePlayers[msgSender] = true;
+            players.push(msgSender);
+        }
+
+        // alter player's bids
+        Bids storage playerBids = bids[msgSender];
+        if (playerBids.amounts[_token] == 0) {
+            playerBids.tokens.push(_token);
+        }
+        playerBids.amounts[_token] += _amount;
+        
+        // alter player chances by querying eth value of tokens to deposit
+        uint256 chanceIncrement = priceOracle.getEthEquivalent(_token, _amount);
+        playerBids.totalChance += chanceIncrement;
+
+        // alter bids by token
+        bidsByToken[_token] += _amount;
+
+        // send tokens to contract
+        IERC20(_token).transferFrom(msgSender, address(this), _amount);
+
+        // collect fee
+        collectedFee += msgValue;
+
+        emit Deposited(msgSender, _token, _amount, chanceIncrement, playerBids.totalChance, block.timestamp);
     }
 
     function rollTheDice()
     public 
-    onlyOwner {
-        require(gameStatus == GameStatus.GAMING, "Invalid current game status");
+    onlyOwner
+    requireGameStatus(GameStatus.GAMING) {
         require(LINK.balanceOf(address(this)) >= randomnessFee, "Not enough LINK to use Oracle for randomness.");
         // pause game
         _startRolling(false);
@@ -173,8 +307,8 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     function rollTheDice(uint256 _randomNumber)
     public 
-    onlyOwner {
-        require(gameStatus == GameStatus.GAMING, "Invalid current game status");
+    onlyOwner
+    requireGameStatus(GameStatus.GAMING) {
         // pause game
         _startRolling(true);
         emit RandomNumberManuallySet(_randomNumber, block.timestamp);
@@ -183,8 +317,8 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     function fixRolling(uint256 _randomNumber)
     public 
-    onlyOwner {
-        require(gameStatus == GameStatus.RANDOM_REQUEST_FAILED, "Invalid current game status");
+    onlyOwner
+    requireGameStatus(GameStatus.RANDOM_REQUEST_FAILED) {
         emit FixingFailedOracleRandomness(randomnessRequestId, _randomNumber, block.timestamp);
         _proceedWithRandomNumber(_randomNumber);
     }
@@ -213,6 +347,35 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @dev Region: Private methods
 
+    function _isUserLockedToDeposit(address _player)
+    private
+    view
+    returns (bool) {
+        return depositLocks[_player];
+    }
+
+    function _lockUserToDeposit(address _player)
+    private {
+        playersLockedToDeposit.push(_player);
+        depositLocks[_player] = true;
+    }
+
+    function _unlockUserToDeposit(address _player)
+    private {
+        // remove from array
+        uint256 lockedUsersLen = playersLockedToDeposit.length;
+        for (uint256 i = 0; i < lockedUsersLen; i++) {
+            if (playersLockedToDeposit[i] == _player) {
+                // replace with the last
+                playersLockedToDeposit[i] = playersLockedToDeposit[lockedUsersLen - 1];
+                // pop the last
+                playersLockedToDeposit.pop();
+                break;
+            }
+        }
+        depositLocks[_player] = false;
+    }
+
     function _startRolling(bool _manualRandomness)
     private {
         gameStatus = GameStatus.ROLLING;
@@ -229,20 +392,15 @@ contract Raffle is Ownable, VRFConsumerBase {
         _randomNumberReceived(_randomNumber);
     }
 
-    function _randomNumberReceived(uint256 _randomNumber) // wrap with changing the status of a game
+    function _randomNumberReceived(uint256 _randomNumber)
     private {
-        // totalChanceSum = sum of totalChance
         uint256 totalChanceSum = _calcCurrentTotalChance();
-
-        // final random number
         uint256 finalRandomNumber = _randomNumber % totalChanceSum;
-        
         emit RandomValueCalculated(_randomNumber, totalChanceSum, finalRandomNumber);
-        
-        chooseWinner(finalRandomNumber, totalChanceSum);
+        _chooseWinner(finalRandomNumber, totalChanceSum);
     }
 
-    function chooseWinner(uint256 _random, uint256 _totalChanceSum)
+    function _chooseWinner(uint256 _random, uint256 _totalChanceSum)
     private {
         address winner;
         uint256 totalChanceSum = 0;
@@ -274,10 +432,10 @@ contract Raffle is Ownable, VRFConsumerBase {
         
         emit WinnerAddressIsChosen(winner, block.timestamp);
         
-        assignTokens(winner);
+        _assignTokens(winner);
     }
     
-    function assignTokens(address _winner)
+    function _assignTokens(address _winner)
     private {
         uint256 timestamp = block.timestamp;
         
@@ -327,7 +485,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     function _calcCurrentTotalChance()
     private
     view
-    returns(uint256) {
+    returns (uint256) {
         uint256 totalChanceSum = 0;
         uint256 playersLength = players.length;
         for (uint8 i = 0; i < playersLength; i++) {
@@ -335,42 +493,6 @@ contract Raffle is Ownable, VRFConsumerBase {
         }
         return totalChanceSum;
     }
-
-    function _getEthEquivalent(address _token, uint256 _amount)
-    public
-    view
-    returns (uint256 value) {
-        // TODO: implement
-        return _amount;
-    }
-
-    function _getPriceFromChainlink(address _proxy)
-    public
-    view
-    returns (int256 price) {
-        (, price, , , ) = AggregatorV3Interface(_proxy).latestRoundData();
-    }
-
-    /*
-    function _getPriceFromChainlink(address _proxy)
-    public
-    view
-    returns (
-      uint80 roundId,
-      int256 price,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    ) {
-        (
-            roundId, 
-            price,
-            startedAt,
-            updatedAt,
-            answeredInRound
-        ) = AggregatorV3Interface(_proxy).latestRoundData();
-    }
-    */
 
     /// @dev Region: Getters and setters methods
 
@@ -403,138 +525,138 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @dev Region: Public getters for testing
 
-    function _getMaxPlayers() 
+    function __getMaxPlayers() 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return maxPlayers;
     }
 
-    function _getMaxTokens() 
+    function __getMaxTokens() 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return maxTokens;
     }
     
-    function _getTicketFee() 
+    function __getTicketFee() 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return ticketFee;
     }
     
-    function _getCollectedFee() 
+    function __getCollectedFee() 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return collectedFee;
     }
     
-    function _getGameStatus() 
+    function __getGameStatus() 
     public
     view
-    returns(uint8) {
+    returns (uint8) {
         return uint8(gameStatus);
     }
     
-    function _getRandomnessKeyHash() 
+    function __getRandomnessKeyHash() 
     public
     view
-    returns(bytes32) {
+    returns (bytes32) {
         return randomnessKeyHash;
     }
     
-    function _getRandomnessFee() 
+    function __getRandomnessFee() 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return randomnessFee;
     }
     
-    function _getRandomnessRequestId() 
+    function __getRandomnessRequestId() 
     public
     view
-    returns(bytes32) {
+    returns (bytes32) {
         return randomnessRequestId;
     }
 
-    function _getPlayers() 
+    function __getPlayers() 
     public
     view
-    returns(address[] memory) {
+    returns (address[] memory) {
         return players;
     }
 
-    function _isPlayerActive(address _player) 
+    function __isPlayerActive(address _player) 
     public
     view
-    returns(bool) {
+    returns (bool) {
         return activePlayers[_player];
     }
     
-    function _getUserChance(address _address) 
+    function __getUserChance(address _address) 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return bids[_address].totalChance;
     }
 
-    function _getPlayerChance1000(address _player) 
+    function __getPlayerChance1000(address _player) 
     public
     view
-    returns(uint256 value, uint32 base) {
-        return _getPlayerChance(_player, 1000);
+    returns (uint256 value, uint32 base) {
+        return __getPlayerChance(_player, 1000);
     }
 
-    function _getPlayerChance(address _player, uint32 _base) 
+    function __getPlayerChance(address _player, uint32 _base) 
     public
     view
-    returns(uint256 value, uint32 base) {
+    returns (uint256 value, uint32 base) {
         uint256 totalChances = _calcCurrentTotalChance();
         uint256 playerValue = bids[_player].totalChance;
         return (playerValue * _base / totalChances, _base);
     }
 
-    function _getPlayerBidsTokens(address _player) 
+    function __getPlayerBidsTokens(address _player) 
     public
     view
     returns (address[] memory) {
         return bids[_player].tokens;
     }
 
-    function _getPlayerBidTokenAmount(address _player, address _token) 
+    function __getPlayerBidTokenAmount(address _player, address _token) 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return bids[_player].amounts[_token];
     }
 
-    function _getTokens() 
+    function __getTokens() 
     public
     view
-    returns(address[] memory) {
+    returns (address[] memory) {
         return tokens;
     }
 
-    function _getTokenBid(address _token) 
+    function __getTokenBid(address _token) 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return bidsByToken[_token];
     }
 
-    function _getWinnerTimestamps(address _winner) 
+    function __getWinnerTimestamps(address _winner) 
     public
     view
-    returns(uint256[] memory) {
+    returns (uint256[] memory) {
         return winnerTimestamps[_winner];
     }
 
-    function _getWinnerRecord(address _winner, uint256 _timestamp) 
+    function __getWinnerRecord(address _winner, uint256 _timestamp) 
     public
     view
-    returns(
+    returns (
         address winner
         , uint256 timestamp
         , bool hasWithdrawn
@@ -545,10 +667,10 @@ contract Raffle is Ownable, VRFConsumerBase {
         return (rec.winner, rec.timestamp, rec.hasWithdrawn, rec.ethPrize, rec.tokens);
     }
     
-    function _getWinnerTokenAmount(address _winner, uint256 _timestamp, address _token) 
+    function __getWinnerTokenAmount(address _winner, uint256 _timestamp, address _token) 
     public
     view
-    returns(uint256) {
+    returns (uint256) {
         return winners[_winner][_timestamp].tokenAmounts[_token];
     }
 }
