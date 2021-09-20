@@ -23,6 +23,13 @@ Other users deposit coins for 5 ETH in sum. Final chanceToWin for our user is 0.
 
 ## Release increments
 
+### commit [492018f](https://github.com/artem-bayandin/blockchain-samples/commit/492018f92d33e8eb6c526953753acfed4da9b48a)
+
+- [done] add 'withdraw' functionality for a winner;
+- [done] refactor rolling the wheel, so that manually it'll require 2 steps: a) set the game status to 'rolling'; b) input 'random' number and trigger selection of a winner;
+- [done] create a custom ERC20 token to be able to test the code;
+- [almost] refactor roles (move method locks into Adminable.sol);
+
 ### commit [407967a](https://github.com/artem-bayandin/blockchain-samples/commit/407967af9e59f8cb3a1bef8448776fa6e21dc76c)
 
 Chainlink data providers refactored:
