@@ -17,12 +17,55 @@ interface IChainlinkDataFeeder {
 }
 
 
+struct ChainlinkDataFeedTokenRecord {
+    address token;
+    string label;
+    address proxy;
+    uint8 decimals;
+}
+
+
 abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
+    ChainlinkDataFeedTokenRecord[] private usdTokens;
+    mapping(address => ChainlinkDataFeedTokenRecord) private usdTokenMap;
+    ChainlinkDataFeedTokenRecord[] private ethTokens;
+    mapping(address => ChainlinkDataFeedTokenRecord) private ethTokenMap;
+    mapping(address => bool) usdToken;
+    address private ethProxy;
+    uint8 private ethDecimals;
+    
     function getEthEquivalent(address _token, uint256 _amount)
     override
     public
     returns(uint256) {
-        return _amount;
+        uint256 ethPrice = 1 * 10 ** ethDecimals;
+
+        ChainlinkDataFeedTokenRecord memory rec;
+        if (usdToken[_token]) {
+            // query both eth and token price
+            rec = usdTokenMap[_token];
+            // query eth price
+            ethPrice = uint256(_getEthPriceFromChainlink());
+        } else {
+            rec = ethTokenMap[_token];
+        }
+        uint256 price = uint256(_getPriceFromChainlink(rec.proxy));
+
+        if (rec.decimals > ethDecimals) {
+            ethPrice *= 1 * 10 ** (rec.decimals - ethDecimals);
+        } else if (rec.decimals < ethDecimals) {
+            price *= 1 * 10 ** (ethDecimals - rec.decimals);
+        }
+
+        uint256 value = price * _amount / ethPrice;
+        return value;
+    }
+
+    function _getEthPriceFromChainlink()
+    private
+    view
+    returns (int256 price) {
+        (, price, , , ) = AggregatorV3Interface(ethProxy).latestRoundData();
     }
 
     function _getPriceFromChainlink(address _proxy)
@@ -52,31 +95,50 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
         ) = AggregatorV3Interface(_proxy).latestRoundData();
     }
     */
-}
 
-
-struct ChainlinkDataFeedTokenRecord {
-    address token;
-    string label;
-    address proxy;
-    uint8 decimals;
+    function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) internal {
+        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
+        usdTokens.push(rec);
+        usdTokenMap[_token] = rec;
+        usdToken[_token] = true;
+    }
+    
+    function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals) internal {
+        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
+        ethTokens.push(rec);
+        ethTokenMap[_token] = rec;
+    }
+    
+    function setEthTokenProxy(address _proxy, uint8 _decimals) internal {
+        ethProxy = _proxy;
+        ethDecimals = _decimals;
+    }
 }
 
 
 contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
-    ChainlinkDataFeedTokenRecord[] allowedTokens;
-    
     constructor () {
-        allowedTokens.push(ChainlinkDataFeedTokenRecord(address(0), "", address(0), 0));
+        setEthTokenProxy(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419, 8);
+        
+        addTokenToEth(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK", 0xDC530D9457755926550b59e8ECcdaE7624181557, 18);
+        addTokenToEth(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI", 0x773616E4d11A78F511299002da57A0a94577F1f4, 18);
+        addTokenToEth(0xB8c77482e45F1F44dE1745F52C74426C631bDD52, "BNB", 0xc546d2d06144F9DD42815b8bA46Ee7B8FcAFa4a2, 18);
+        addTokenToEth(0xE1Be5D3f34e89dE342Ee97E6e90D405884dA6c67, "TRX", 0xacD0D1A29759CC01E8D925371B72cb2b5610EA25, 8);
+        addTokenToEth(0xE41d2489571d322189246DaFA5ebDe1F4699F498, "ZRX", 0x2Da4983a622a8498bb1a21FaE9D8F6C664939962, 18);
     }
 }
 
 
 contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
-    ChainlinkDataFeedTokenRecord[] allowedTokens;
-    
     constructor () {
-        allowedTokens.push(ChainlinkDataFeedTokenRecord(address(0), "", address(0), 0));
+        setEthTokenProxy(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e, 8);
+        
+        // addresses of tokens relate to contracts in etherscan, not a rinkeby one
+        addTokenToUsd(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK", 0xd8bD0a1cB028a31AA859A21A3758685a95dE4623, 8);
+        addTokenToEth(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI", 0x74825DbC8BF76CC4e9494d0ecB210f676Efa001D, 18);
+        addTokenToUsd(0xB8c77482e45F1F44dE1745F52C74426C631bDD52, "BNB", 0xcf0f51ca2cDAecb464eeE4227f5295F2384F84ED, 8);
+        addTokenToUsd(0xE1Be5D3f34e89dE342Ee97E6e90D405884dA6c67, "TRX", 0xb29f616a0d54FF292e997922fFf46012a63E2FAe, 8);
+        addTokenToUsd(0xE41d2489571d322189246DaFA5ebDe1F4699F498, "ZRX", 0xF7Bbe4D7d13d600127B6Aa132f1dCea301e9c8Fc, 8);
     }
 }
 
