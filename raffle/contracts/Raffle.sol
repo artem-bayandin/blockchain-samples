@@ -2,14 +2,103 @@
 
 pragma solidity ^0.8.7;
 
+
 // IERC20 to transfer playable tokens
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-// onlyOwner modifier
-import '@openzeppelin/contracts/access/Ownable.sol';
+// ERC20 token implementation for tests
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 // random number oracle (Chainlink)
 import 'github.com/smartcontractkit/chainlink/blob/master/contracts/src/v0.8/VRFConsumerBase.sol';
 // on-chain price oracle (Chainlink)
 import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+
+
+/// @title Adminable
+/// @notice Contains several methods to manage general admins for a contract
+/// @dev Kinda 'Ownable', but with extended functions
+abstract contract Adminable {
+    /// @notice An array of addresses who has admin permissions
+    address[] private admins;
+    
+    /// @notice Map of admin addresses to faster distinguish whether a user has admin roles
+    mapping(address => bool) adminMap;
+
+    /// @notice Validates if msg.sender has admin permissions
+    modifier onlyAdmin() {
+        address msgSender = msg.sender;
+        require(adminMap[msgSender], "You do not have permissions to perform current operation.");
+        _;
+    }
+    
+    /// @dev Registers msg.sender as an admin
+    constructor() {
+        address msgSender = msg.sender;
+        admins.push(msgSender);
+        adminMap[msgSender] = true;
+    }
+
+    /// @notice Allows an address to manage PriceOracle
+    function addAdmin(address _admin)
+    public
+    onlyAdmin {
+        if (!adminMap[_admin]) {
+            admins.push(_admin);
+            adminMap[_admin] = true;
+        }
+    }
+
+    /// @notice Removes an address from admins
+    function removeAdmin(address _admin)
+    public
+    onlyAdmin {
+        require(admins.length > 1, "At least 1 admin should be assigned");
+        if (adminMap[_admin]) {
+            adminMap[_admin] = false;
+            uint256 adminLen = admins.length;
+            for (uint256 i = 0; i < adminLen; i++) {
+                if (admins[i] == _admin) {
+                    if (i != adminLen) {
+                        admins[i] = admins[adminLen - 1];
+                    }
+                    admins.pop();
+                    break;
+                }
+            }
+        }
+    }
+    
+    /// @notice Returns true if address is in the list of admins
+    function isAdmin(address _admin)
+    public
+    view
+    returns(bool) {
+        return adminMap[_admin];
+    }
+    
+    /// @notice Returns the collection of addresses that are currently admins
+    function getAdmins()
+    public
+    view
+    returns(address[] memory) {
+        return admins;
+    }
+}
+
+
+/// @title RaffleERC20TokenMock
+/// @notice ERC20 token mock to be used in tests
+/// @dev Admin permission management might be moved into a separate abstract contract.
+contract RaffleERC20TokenMock is ERC20, Adminable {
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+    }
+    
+    /// @notice Mints token to a msg.sender
+    function mint(uint256 _amount)
+    public
+    onlyAdmin {
+        _mint(msg.sender, _amount);
+    }
+}
 
 
 /// @title IChainlinkDataFeeder
@@ -25,8 +114,6 @@ interface IChainlinkDataFeeder {
     /// @notice Returns true if token is in the list of avalable tokens
     function isTokenAvailable(address _token) external view returns(bool);
     
-    /// @dev Region: functions for management
-
     /// @notice Adds a chainlink proxy of a token-to-usd pair
     function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) external;
 
@@ -35,17 +122,6 @@ interface IChainlinkDataFeeder {
 
     /// @notice Sets ETH price proxy address and amount of decimals of ETH
     function setEthTokenProxy(address _proxy, uint8 _decimals) external;
-
-    /// @notice Allows an address to manage PriceOracle
-    function addAdmin(address _admin) external;
-
-    /// @notice Removes an address from admins
-    function removeAdmin(address _admin) external;
-    
-    /// @dev Region: functions for tests
-
-    /// @notice Returns the collection of addresses that are currently admins of the PriceOracle
-    function __getOracleAdmins() external view returns(address[] memory);
 }
 
 
@@ -69,7 +145,7 @@ struct AvailableTokensToDeposit {
 /// @title ChainlinkDataFeederBase
 /// @notice Base abstract PriceOracle contract with all the logic
 /// @dev Inherited contracts should set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth
-abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
+abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     /// @notice An array of token addresses for which price is fetched via Token-USD and ETH-USD scheme
     address[] private usdTokens;
     /// @notice Map of 'usd-based' tokens proxies
@@ -88,23 +164,7 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
     /// @notice ETH decimals
     uint8 private ethDecimals;
     
-    /// @notice An array of addresses who has admin permissions
-    address[] private admins;
-    /// @notice Map of admin addresses to faster distinguish whether a user has admin roles
-    mapping(address => bool) adminMap;
-    
-    /// @notice Validates if msg.sender has admin permissions
-    modifier isAdmin() {
-        address msgSender = msg.sender;
-        require(adminMap[msgSender], "You do not have permissions to perform current operation.");
-        _;
-    }
-    
-    constructor() {
-        address msgSender = msg.sender;
-        admins.push(msgSender);
-        adminMap[msgSender] = true;
-    }
+    constructor() { }
 
     /// @notice Main function of a PriceOracle - get ETH equivalent of a ERC20 token
     function getEthEquivalent(address _token, uint256 _amount)
@@ -168,13 +228,13 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
         return usdTokenMap[_token].token != address(0) || ethTokenMap[_token].token != address(0);
     }
 
-    /// @dev Region: owner functions
+    /// @dev Region: admin functions
 
     /// @notice Adds a chainlink proxy of a token-to-usd pair
     function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals)
     override
     public
-    isAdmin {
+    onlyAdmin {
         ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
         usdTokens.push(_token);
         usdTokenMap[_token] = rec;
@@ -185,7 +245,7 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
     function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals)
     override
     public
-    isAdmin {
+    onlyAdmin {
         ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
         ethTokens.push(_token);
         ethTokenMap[_token] = rec;
@@ -195,41 +255,9 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
     function setEthTokenProxy(address _proxy, uint8 _decimals)
     override
     public
-    isAdmin {
+    onlyAdmin {
         ethProxy = _proxy;
         ethDecimals = _decimals;
-    }
-    
-    /// @notice Allows an address to manage PriceOracle
-    function addAdmin(address _admin)
-    override
-    public
-    isAdmin {
-        if (!adminMap[_admin]) {
-            admins.push(_admin);
-            adminMap[_admin] = true;
-        }
-    }
-
-    /// @notice Removes an address from admins
-    function removeAdmin(address _admin)
-    override
-    public
-    isAdmin {
-        require(admins.length > 1, "At least 1 admin should be assigned");
-        if (adminMap[_admin]) {
-            adminMap[_admin] = false;
-            uint256 adminLen = admins.length;
-            for (uint256 i = 0; i < adminLen; i++) {
-                if (admins[i] == _admin) {
-                    if (i != adminLen) {
-                        admins[i] = admins[adminLen - 1];
-                    }
-                    admins.pop();
-                    break;
-                }
-            }
-        }
     }
 
     /// @dev Region: private
@@ -268,17 +296,6 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
         ) = AggregatorV3Interface(_proxy).latestRoundData();
     }
     */
-    
-    /// @dev Region: for tests
-    
-    /// @notice Returns the collection of addresses that are currently admins of the PriceOracle
-    function __getOracleAdmins()
-    override
-    public
-    view
-    returns(address[] memory) {
-        return admins;
-    }
 }
 
 
@@ -320,7 +337,7 @@ contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
 /// @dev Two ways to work with random numbers are implemented:
 /// @dev - owner triggers a dice, and random number is requested from an oracle;
 /// @dev - owner triggers a dice with a random number (in this case, this might be triggered manually from UI, or from server using HDWalletProvider).
-contract Raffle is Ownable, VRFConsumerBase {
+contract Raffle is Adminable, VRFConsumerBase {
 
     /// @notice bids of a player in an ongoing game
     struct Bids {
@@ -539,7 +556,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Utilizes a Chainlink random generator
     function rollTheDice()
     public 
-    onlyOwner
+    onlyAdmin
     requireGameStatus(GameStatus.GAMING) {
         require(LINK.balanceOf(address(this)) >= randomnessFee, "Not enough LINK to use Oracle for randomness.");
         // pause game
@@ -553,7 +570,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Manually sets the random number
     function rollTheDice(uint256 _randomNumber)
     public 
-    onlyOwner
+    onlyAdmin
     requireGameStatus(GameStatus.GAMING) {
         // pause game
         _startRolling(true);
@@ -565,7 +582,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Replaces oracless random number with namually entered one.
     function fixRolling(uint256 _randomNumber)
     public 
-    onlyOwner
+    onlyAdmin
     requireGameStatus(GameStatus.RANDOM_REQUEST_FAILED) {
         emit FixingFailedOracleRandomness(randomnessRequestId, _randomNumber, block.timestamp);
         _proceedWithRandomNumber(_randomNumber);
@@ -751,7 +768,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Sets the max number of players to play a single game
     function setMaxPlayers(uint256 _maxPlayers)
     public
-    onlyOwner {
+    onlyAdmin {
         require(_maxPlayers > 1, "There should be at least 2 players.");
         uint256 oldValue = maxPlayers;
         maxPlayers = _maxPlayers;
@@ -761,7 +778,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Sets the max number of different ERC20 tokens to be deposited within one game
     function setMaxTokens(uint256 _maxTokens)
     public
-    onlyOwner {
+    onlyAdmin {
         require(_maxTokens >= 1, "There should be at least 1 token allowed for deposit.");
         uint256 oldValue = maxTokens;
         maxTokens = _maxTokens;
@@ -771,7 +788,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Sets the ticket fee to deposit tokens
     function setTicketFee(uint256 _ticketFee)
     public
-    onlyOwner {
+    onlyAdmin {
         require(_ticketFee > 0, "Fee should be greate than 0.");
         uint256 oldValue = ticketFee;
         ticketFee = _ticketFee;
@@ -781,7 +798,7 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Updates the address of a PriceOracle
     function setPriceOracle(address _oracleAddress)
     public
-    onlyOwner {
+    onlyAdmin {
         require(_oracleAddress != address(priceOracle), "PriceOracle address should not be the same as existing one.");
         priceOracle = IChainlinkDataFeeder(_oracleAddress);
     }
@@ -935,12 +952,5 @@ contract Raffle is Ownable, VRFConsumerBase {
     view
     returns (uint256) {
         return winners[_winner][_timestamp].tokenAmounts[_token];
-    }
-    
-    function __getOracleAdmins()
-    public
-    view
-    returns(address[] memory) {
-        return priceOracle.__getOracleAdmins();
     }
 }
