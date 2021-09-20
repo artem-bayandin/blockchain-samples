@@ -12,11 +12,45 @@ import 'github.com/smartcontractkit/chainlink/blob/master/contracts/src/v0.8/VRF
 import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 
+/// @title IChainlinkDataFeeder
+/// @notice Interface for a price oracle
+/// @dev Deployment: a) deploy a PriceOracle; b) deploy a Raffle, passing address(PriceOracle) into ctor; c) call PriceOracle.addAdmin(address(Raffle)) to allow Raflle to administrate PriceOracle
 interface IChainlinkDataFeeder {
-    function getEthEquivalent(address _token, uint256 _amount) external returns(uint256);
+    /// @notice Main function of a PriceOracle - get ETH equivalent of a ERC20 token
+    function getEthEquivalent(address _token, uint256 _amount) external view returns(uint256);
+    
+    /// @notice Returns a list of tokens, for which prices might be queried
+    function getAvailableTokens() external view returns(AvailableTokensToDeposit[] memory);
+    
+    /// @notice Returns true if token is in the list of avalable tokens
+    function isTokenAvailable(address _token) external view returns(bool);
+    
+    /// @dev Region: functions for management
+
+    /// @notice Adds a chainlink proxy of a token-to-usd pair
+    function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) external;
+
+    /// @notice Adds a chainlink proxy of a token-to-eth pair
+    function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals) external;
+
+    /// @notice Sets ETH price proxy address and amount of decimals of ETH
+    function setEthTokenProxy(address _proxy, uint8 _decimals) external;
+
+    /// @notice Allows an address to manage PriceOracle
+    function addAdmin(address _admin) external;
+
+    /// @notice Removes an address from admins
+    function removeAdmin(address _admin) external;
+    
+    /// @dev Region: functions for tests
+
+    /// @notice Returns the collection of addresses that are currently admins of the PriceOracle
+    function __getOracleAdmins() external view returns(address[] memory);
 }
 
 
+/// @title ChainlinkDataFeedTokenRecord
+/// @notice Struct represents token proxy to query price via chainlink price oracle
 struct ChainlinkDataFeedTokenRecord {
     address token;
     string label;
@@ -25,18 +59,58 @@ struct ChainlinkDataFeedTokenRecord {
 }
 
 
+/// @title AvailableTokensToDeposit
+struct AvailableTokensToDeposit {
+    address token;
+    string label;
+}
+
+
+/// @title ChainlinkDataFeederBase
+/// @notice Base abstract PriceOracle contract with all the logic
+/// @dev Inherited contracts should set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth
 abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
-    ChainlinkDataFeedTokenRecord[] private usdTokens;
+    /// @notice An array of token addresses for which price is fetched via Token-USD and ETH-USD scheme
+    address[] private usdTokens;
+    /// @notice Map of 'usd-based' tokens proxies
     mapping(address => ChainlinkDataFeedTokenRecord) private usdTokenMap;
-    ChainlinkDataFeedTokenRecord[] private ethTokens;
+    
+    /// @notice An array of token addresses for which price is fetched via Token-ETH scheme
+    address[] private ethTokens;
+    /// @notice Map of 'eth-based' tokens proxies
     mapping(address => ChainlinkDataFeedTokenRecord) private ethTokenMap;
+    
+    /// @notice Helper map to distinguish Token-USD-ETH vs Token-ETH proxies
     mapping(address => bool) usdToken;
+    
+    /// @notice ETH proxy address
     address private ethProxy;
+    /// @notice ETH decimals
     uint8 private ethDecimals;
     
+    /// @notice An array of addresses who has admin permissions
+    address[] private admins;
+    /// @notice Map of admin addresses to faster distinguish whether a user has admin roles
+    mapping(address => bool) adminMap;
+    
+    /// @notice Validates if msg.sender has admin permissions
+    modifier isAdmin() {
+        address msgSender = msg.sender;
+        require(adminMap[msgSender], "You do not have permissions to perform current operation.");
+        _;
+    }
+    
+    constructor() {
+        address msgSender = msg.sender;
+        admins.push(msgSender);
+        adminMap[msgSender] = true;
+    }
+
+    /// @notice Main function of a PriceOracle - get ETH equivalent of a ERC20 token
     function getEthEquivalent(address _token, uint256 _amount)
     override
     public
+    view
     returns(uint256) {
         uint256 ethPrice = 1 * 10 ** ethDecimals;
 
@@ -60,6 +134,105 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
         uint256 value = price * _amount / ethPrice;
         return value;
     }
+
+    /// @notice Returns a list of tokens, for which prices might be queried
+    function getAvailableTokens()
+    override
+    public
+    view
+    returns(AvailableTokensToDeposit[] memory) {
+        uint256 usdTokensLen = usdTokens.length;
+        uint256 ethTokensLen = ethTokens.length;
+        
+        AvailableTokensToDeposit[] memory result = new AvailableTokensToDeposit[](usdTokensLen + ethTokensLen);
+
+        for (uint256 i = 0; i < usdTokensLen; i++) {
+            ChainlinkDataFeedTokenRecord memory item = usdTokenMap[usdTokens[i]];
+            result[i] = AvailableTokensToDeposit(item.token, item.label);
+        }
+
+        for (uint256 i = usdTokensLen; i < usdTokensLen + ethTokensLen; i++) {
+            ChainlinkDataFeedTokenRecord memory item = ethTokenMap[ethTokens[i - usdTokensLen]];
+            result[i] = AvailableTokensToDeposit(item.token, item.label);
+        }
+
+        return result;
+    }
+
+    /// @notice Returns true if token is in the list of avalable tokens
+    function isTokenAvailable(address _token)
+    override
+    public
+    view
+    returns(bool) {
+        return usdTokenMap[_token].token != address(0) || ethTokenMap[_token].token != address(0);
+    }
+
+    /// @dev Region: owner functions
+
+    /// @notice Adds a chainlink proxy of a token-to-usd pair
+    function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals)
+    override
+    public
+    isAdmin {
+        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
+        usdTokens.push(_token);
+        usdTokenMap[_token] = rec;
+        usdToken[_token] = true;
+    }
+    
+    /// @notice Adds a chainlink proxy of a token-to-eth pair
+    function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals)
+    override
+    public
+    isAdmin {
+        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
+        ethTokens.push(_token);
+        ethTokenMap[_token] = rec;
+    }
+    
+    /// @notice Sets ETH price proxy address and amount of decimals of ETH
+    function setEthTokenProxy(address _proxy, uint8 _decimals)
+    override
+    public
+    isAdmin {
+        ethProxy = _proxy;
+        ethDecimals = _decimals;
+    }
+    
+    /// @notice Allows an address to manage PriceOracle
+    function addAdmin(address _admin)
+    override
+    public
+    isAdmin {
+        if (!adminMap[_admin]) {
+            admins.push(_admin);
+            adminMap[_admin] = true;
+        }
+    }
+
+    /// @notice Removes an address from admins
+    function removeAdmin(address _admin)
+    override
+    public
+    isAdmin {
+        require(admins.length > 1, "At least 1 admin should be assigned");
+        if (adminMap[_admin]) {
+            adminMap[_admin] = false;
+            uint256 adminLen = admins.length;
+            for (uint256 i = 0; i < adminLen; i++) {
+                if (admins[i] == _admin) {
+                    if (i != adminLen) {
+                        admins[i] = admins[adminLen - 1];
+                    }
+                    admins.pop();
+                    break;
+                }
+            }
+        }
+    }
+
+    /// @dev Region: private
 
     function _getEthPriceFromChainlink()
     private
@@ -95,27 +268,22 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder {
         ) = AggregatorV3Interface(_proxy).latestRoundData();
     }
     */
-
-    function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) internal {
-        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
-        usdTokens.push(rec);
-        usdTokenMap[_token] = rec;
-        usdToken[_token] = true;
-    }
     
-    function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals) internal {
-        ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
-        ethTokens.push(rec);
-        ethTokenMap[_token] = rec;
-    }
+    /// @dev Region: for tests
     
-    function setEthTokenProxy(address _proxy, uint8 _decimals) internal {
-        ethProxy = _proxy;
-        ethDecimals = _decimals;
+    /// @notice Returns the collection of addresses that are currently admins of the PriceOracle
+    function __getOracleAdmins()
+    override
+    public
+    view
+    returns(address[] memory) {
+        return admins;
     }
 }
 
 
+/// @title ChainlinkDataFeederInEthMainnet
+/// @notice PriceOracle setting for ETH Mainnet
 contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
     constructor () {
         setEthTokenProxy(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419, 8);
@@ -129,11 +297,13 @@ contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
 }
 
 
+/// @title ChainlinkDataFeederInRinkeby
+/// @notice PriceOracle setting for Rinkeby Testnet
 contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
     constructor () {
         setEthTokenProxy(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e, 8);
         
-        // addresses of tokens relate to contracts in etherscan, not a rinkeby one
+        // addresses of tokens relate to contracts in etherscan, not a rinkeby one - when deploying find the valid ones
         addTokenToUsd(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK", 0xd8bD0a1cB028a31AA859A21A3758685a95dE4623, 8);
         addTokenToEth(0x6B175474E89094C44Da98b954EedeAC495271d0F, "DAI", 0x74825DbC8BF76CC4e9494d0ecB210f676Efa001D, 18);
         addTokenToUsd(0xB8c77482e45F1F44dE1745F52C74426C631bDD52, "BNB", 0xcf0f51ca2cDAecb464eeE4227f5295F2384F84ED, 8);
@@ -229,7 +399,8 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice reentrancy corresponding mapping
     mapping(address => bool) depositLocks;
     
-    IChainlinkDataFeeder private immutable priceOracle;
+    /// @notice Price oracle
+    IChainlinkDataFeeder private priceOracle;
 
     event PaymentReceived(address indexed msgSender, uint256 msgValue);
     event Deposited(address indexed msgSender, address indexed token, uint256 amount, uint256 chanceIncrement, uint256 totalChance, uint256 timestamp);
@@ -257,6 +428,8 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @param _linkToken a static address of Chainlink LINK token to be used for randomness, depends on a network
     /// @param _randomnessKeyHash a static hash for Chainlink randomness, depends on a network
     /// @param _randomnessFee a static fee for randomness, depends on a network
+    /// @param _priceOracleAddress ad address of a PriceOracle
+    /*
     constructor (
         uint256 _maxPlayers
         , uint256 _maxTokens
@@ -265,6 +438,7 @@ contract Raffle is Ownable, VRFConsumerBase {
         , address _linkToken
         , bytes32 _randomnessKeyHash
         , uint256 _randomnessFee
+        , address _priceOracleAddress
     )
     VRFConsumerBase(_vrfCoordinator, _linkToken)
     {
@@ -273,12 +447,13 @@ contract Raffle is Ownable, VRFConsumerBase {
         ticketFee = _ticketFee;
         randomnessKeyHash = _randomnessKeyHash;
         randomnessFee = _randomnessFee;
-        priceOracle = new ChainlinkDataFeederInEthMainnet();
+        priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
     }
+    */
 
     /// @dev Ctor for RinkebyNetwork (for simplicity)
-    /*
-    constructor()
+    
+    constructor(address _priceOracleAddress)
     VRFConsumerBase(0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, 0x01BE23585060835E02B77ef475b0Cc51aA1e0709)
     {
         maxPlayers = 100;
@@ -286,10 +461,10 @@ contract Raffle is Ownable, VRFConsumerBase {
         ticketFee = 0;
         randomnessKeyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
         randomnessFee = 1 * 10 ** 17; // 0.1 LINK
-        priceOracle = new ChainlinkDataFeederInRinkeby();
+        priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
     }
-    */
 
+    /// @notice Allows a user only single call of a method.
     modifier noDepositReentrancy() {
         address msgSender = msg.sender;
         require(!_isUserLockedToDeposit(msgSender), "Reentrancy detected.");
@@ -298,6 +473,7 @@ contract Raffle is Ownable, VRFConsumerBase {
         _unlockUserToDeposit(msgSender);
     }
 
+    /// @notice Validates the expected gameStatus
     modifier requireGameStatus(GameStatus _expected) {
         require(gameStatus == _expected, "Invalid current game status.");
         _;
@@ -312,6 +488,10 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @dev Region: Public methods
 
+    /// @notice Main function for a player.
+    /// @notice Token should be previously approved to be managed by the game
+    /// @param _token Address of ERC20 token to deposit
+    /// @param _amount Amount of ERC20 token to deposit
     function deposit(address _token, uint256 _amount)
     public
     payable
@@ -355,6 +535,8 @@ contract Raffle is Ownable, VRFConsumerBase {
         emit Deposited(msgSender, _token, _amount, chanceIncrement, playerBids.totalChance, block.timestamp);
     }
 
+    /// @notice Admin function to roll the dice and find a winner.
+    /// @notice Utilizes a Chainlink random generator
     function rollTheDice()
     public 
     onlyOwner
@@ -367,6 +549,8 @@ contract Raffle is Ownable, VRFConsumerBase {
         emit RandomnessRequested(block.timestamp, randomnessRequestId);
     }
 
+    /// @notice Admin function to roll the dice and find a winner.
+    /// @notice Manually sets the random number
     function rollTheDice(uint256 _randomNumber)
     public 
     onlyOwner
@@ -377,6 +561,8 @@ contract Raffle is Ownable, VRFConsumerBase {
         _proceedWithRandomNumber(_randomNumber);
     }
 
+    /// @notice Admin function to fix a possible issue when random number was requested from an oracle, but validations failed for any reason. See more 'fulfillRandomness'.
+    /// @notice Replaces oracless random number with namually entered one.
     function fixRolling(uint256 _randomNumber)
     public 
     onlyOwner
@@ -387,6 +573,8 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @dev Region: Randomness callback
 
+    /// @notice VRFConsumerBase callback function when random number was generated.
+    /// @dev Performs some validations, and if failed, sets gameStatus to RANDOM_REQUEST_FAILED, and an issue should be resolved via 'fixRolling'.
     function fulfillRandomness(bytes32 _requestId, uint256 _randomNumber)
     internal
     override {
@@ -428,8 +616,10 @@ contract Raffle is Ownable, VRFConsumerBase {
         uint256 lockedUsersLen = playersLockedToDeposit.length;
         for (uint256 i = 0; i < lockedUsersLen; i++) {
             if (playersLockedToDeposit[i] == _player) {
-                // replace with the last
-                playersLockedToDeposit[i] = playersLockedToDeposit[lockedUsersLen - 1];
+                if (i != lockedUsersLen - 1) {
+                    // replace with the last
+                    playersLockedToDeposit[i] = playersLockedToDeposit[lockedUsersLen - 1];
+                }
                 // pop the last
                 playersLockedToDeposit.pop();
                 break;
@@ -558,6 +748,7 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @dev Region: Getters and setters methods
 
+    /// @notice Sets the max number of players to play a single game
     function setMaxPlayers(uint256 _maxPlayers)
     public
     onlyOwner {
@@ -567,6 +758,7 @@ contract Raffle is Ownable, VRFConsumerBase {
         emit MaxPlayersNumberChanged(oldValue, maxPlayers);
     }
 
+    /// @notice Sets the max number of different ERC20 tokens to be deposited within one game
     function setMaxTokens(uint256 _maxTokens)
     public
     onlyOwner {
@@ -576,6 +768,7 @@ contract Raffle is Ownable, VRFConsumerBase {
         emit MaxTokensNumberChanged(oldValue, maxTokens);
     }
     
+    /// @notice Sets the ticket fee to deposit tokens
     function setTicketFee(uint256 _ticketFee)
     public
     onlyOwner {
@@ -583,6 +776,14 @@ contract Raffle is Ownable, VRFConsumerBase {
         uint256 oldValue = ticketFee;
         ticketFee = _ticketFee;
         emit TicketFeeChanged(oldValue, ticketFee);
+    }
+    
+    /// @notice Updates the address of a PriceOracle
+    function setPriceOracle(address _oracleAddress)
+    public
+    onlyOwner {
+        require(_oracleAddress != address(priceOracle), "PriceOracle address should not be the same as existing one.");
+        priceOracle = IChainlinkDataFeeder(_oracleAddress);
     }
 
     /// @dev Region: Public getters for testing
@@ -734,5 +935,12 @@ contract Raffle is Ownable, VRFConsumerBase {
     view
     returns (uint256) {
         return winners[_winner][_timestamp].tokenAmounts[_token];
+    }
+    
+    function __getOracleAdmins()
+    public
+    view
+    returns(address[] memory) {
+        return priceOracle.__getOracleAdmins();
     }
 }
