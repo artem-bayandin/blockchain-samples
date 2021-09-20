@@ -34,6 +34,8 @@ Chainlink data providers refactored:
 
 Next steps:
 
+- add 'withdraw' functionality for a winner;
+- refactor rolling the wheel, so that manually it'll require 2 steps: a) set the game status to 'rolling'; b) input 'random' number and trigger selection of a winner;
 - create a custom ERC20 token to be able to test the code;
 - refactor more (move roles management (admin rights) into an abstract base class);
 - code truffle tests;
