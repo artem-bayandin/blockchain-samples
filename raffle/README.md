@@ -3,7 +3,7 @@
 ## Description
 Kind of a Raffle lottery game.
 <br/>
-User 'buys' a ticket by depositing its ERC20 tokens to the game:
+User 'buys' a ticket and deposits ERC20 tokens to have a higher chance to win.
 - fee for participation might be applied;
 - chanceToWin = personalChanceToWin / sumOfUsersChances;
 - personalChanceToWin = ETH value, equivalent to the deposited amount of ERC20 tokens.
@@ -26,6 +26,7 @@ Other users deposit coins for 5 ETH in sum. Final chanceToWin for our user is 0.
 ### commit [6fbe5d0](https://github.com/artem-bayandin/blockchain-samples/tree/6fbe5d0c9fd517066e5f2f643ef18160debf91dc)
 - [Raffle3.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle3.sol) - a playground to manually test the logic and oracles. Manually, it works, being deployed to Rinkeby;
 - [Raffle.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle.sol) - a cleaned version of Raffle3.sol, not yet tested, but ready to;
+- token allowance should be covered on a frontend, unlimited permissions will be requested (approve 2 ** 256 - 1);
 - 'withdraw' function is not yet implemented;
 - chainlink data providers should be later moved into separate files, notations are to be added;
 - no tests at the moment; (sample of truffle tests might be found [here](https://github.com/artem-bayandin/blockchain-satisfactor/tree/master/test), although it will be refactored soon);
