@@ -23,6 +23,22 @@ Other users deposit coins for 5 ETH in sum. Final chanceToWin for our user is 0.
 
 ## Release increments
 
+### commit [407967a](https://github.com/artem-bayandin/blockchain-samples/commit/407967af9e59f8cb3a1bef8448776fa6e21dc76c)
+
+Chainlink data providers refactored:
+
+- two oracles are prepared for EHT Mainnet and Rankeby Testnet;
+- it's now possible to add a chainlink proxy address for a token;
+- Token-ETH value is now calculated right;
+- Rankeby price oracle successfully tested on Rankeby.
+
+Next steps:
+
+- create a custom ERC20 token to be able to test the code;
+- refactor more (move roles management (admin rights) into an abstract base class);
+- code truffle tests;
+- code minimal UI.
+
 ### commit [6fbe5d0](https://github.com/artem-bayandin/blockchain-samples/tree/6fbe5d0c9fd517066e5f2f643ef18160debf91dc)
 - [Raffle3.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle3.sol) - a playground to manually test the logic and oracles. Manually, it works, being deployed to Rinkeby;
 - [Raffle.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle.sol) - a cleaned version of Raffle3.sol, not yet tested, but ready to;
