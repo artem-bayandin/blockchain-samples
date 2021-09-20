@@ -101,6 +101,11 @@ contract Raffle is Adminable, VRFConsumerBase {
     address[] playersLockedToDeposit;
     /// @notice reentrancy corresponding mapping
     mapping(address => bool) depositLocks;
+
+    /// @notice reentrancy lock for a player to be able to step into withdraw func only once
+    address[] playersLockedToWithdraw;
+    /// @notice reentrancy corresponding mapping
+    mapping(address => bool) withdrawLocks;
     
     /// @notice Price oracle
     IChainlinkDataFeeder private priceOracle;
@@ -117,7 +122,8 @@ contract Raffle is Adminable, VRFConsumerBase {
     event RandomnessRequestIdFailed(bytes32 indexed randomnessRequestId, bytes32 indexed receivedRandomnessRequestId, uint256 randomNumber);
     event RandomValueCalculated(uint256 receivedRandomNumber, uint256 totalChanceSum, uint256 finalRandomNumber);
     event WinnerAddressIsChosen(address indexed winner, uint256 timestamp);
-    event PrizeAssigned(address indexed winner, uint256 timestamp, uint256 ethPrize);
+    event PrizeAssigned(address indexed winner, uint256 indexed timestamp, uint256 ethPrize);
+    event PrizeWithdrawn(address indexed winner, uint256 indexed prizeAssignmentTimestamp, uint256 timestamp, uint256 ethPrize);
     event GameRestarted(uint256 timestamp);
     event MaxPlayersNumberChanged(uint256 oldValue, uint256 newValue);
     event MaxTokensNumberChanged(uint256 oldValue, uint256 newValue);
@@ -176,9 +182,24 @@ contract Raffle is Adminable, VRFConsumerBase {
         _unlockUserToDeposit(msgSender);
     }
 
+    /// @notice Allows a user only single call of a method.
+    modifier noWithdrawReentrancy() {
+        address msgSender = msg.sender;
+        require(!_isUserLockedToWithdraw(msgSender), "Reentrancy detected.");
+        _lockUserToWithdraw(msgSender);
+        _;
+        _unlockUserToWithdraw(msgSender);
+    }
+
     /// @notice Validates the expected gameStatus
     modifier requireGameStatus(GameStatus _expected) {
         require(gameStatus == _expected, "Invalid current game status.");
+        _;
+    }
+    
+    /// @notice Validates that price oracle has a proxy set up for a token
+    modifier requireTokenAllowed(address _token) {
+        require(priceOracle.isTokenProxyAvailable(_token), "Token is not allowed to be deposited");
         _;
     }
 
@@ -199,7 +220,8 @@ contract Raffle is Adminable, VRFConsumerBase {
     public
     payable
     noDepositReentrancy
-    requireGameStatus(GameStatus.GAMING) {
+    requireGameStatus(GameStatus.GAMING)
+    requireTokenAllowed(_token) {
         // fetch data from msg.*
         address msgSender = msg.sender;
         uint256 msgValue = msg.value;
@@ -236,6 +258,62 @@ contract Raffle is Adminable, VRFConsumerBase {
         collectedFee += msgValue;
 
         emit Deposited(msgSender, _token, _amount, chanceIncrement, playerBids.totalChance, block.timestamp);
+    }
+    
+    function withdrawThePrize()
+    public
+    payable
+    noWithdrawReentrancy {
+        address msgSender = payable(msg.sender);
+        uint256[] memory timestamps = winnerTimestamps[msgSender];
+        uint256 timestampsLen = timestamps.length;
+        
+        if (timestampsLen == 0) {
+            return;
+        }
+        
+        // move backward on timestamps
+        for (uint256 i = timestampsLen - 1; i >= 0; i--) {
+            uint256 ts = timestamps[i];
+            WinnerRecord storage rec = winners[msgSender][ts];
+            /*
+            /// @notice an array of tokens a player won
+            address[] tokens;
+            /// @notice amounts per token a winner won
+            mapping(address => uint256) tokenAmounts;
+            */
+            
+            if (rec.hasWithdrawn) {
+                break;
+            }
+            
+            // let it set right now. if user tries to cheat - it won't receive a penny
+            rec.hasWithdrawn = true;
+            
+            uint256 ethPrize = rec.ethPrize;
+            rec.ethPrize = 0;
+            
+            // transfer tokens
+            for (uint tokenCounter = 0; tokenCounter < rec.tokens.length; tokenCounter++) {
+                address tokenAddress = rec.tokens[tokenCounter];
+                uint256 tokenAmount = rec.tokenAmounts[tokenAddress];
+                // set to 0
+                rec.tokenAmounts[tokenAddress] = 0;
+                
+                // try to send
+                IERC20(tokenAddress).transfer(msgSender, tokenAmount);
+            }
+            
+            if (ethPrize > 0) {
+                // send eth
+                (bool success,) = msgSender.call{value:ethPrize}("");
+                if (success) {
+                    // do nothing
+                }
+            }
+            
+            emit PrizeWithdrawn(msgSender, ts, block.timestamp, ethPrize);
+        }
     }
 
     /// @notice Admin function to roll the dice and find a winner.
@@ -338,6 +416,37 @@ contract Raffle is Adminable, VRFConsumerBase {
             }
         }
         depositLocks[_player] = false;
+    }
+
+    function _isUserLockedToWithdraw(address _player)
+    private
+    view
+    returns (bool) {
+        return withdrawLocks[_player];
+    }
+
+    function _lockUserToWithdraw(address _player)
+    private {
+        playersLockedToWithdraw.push(_player);
+        withdrawLocks[_player] = true;
+    }
+
+    function _unlockUserToWithdraw(address _player)
+    private {
+        // remove from array
+        uint256 lockedUsersLen = playersLockedToWithdraw.length;
+        for (uint256 i = 0; i < lockedUsersLen; i++) {
+            if (playersLockedToWithdraw[i] == _player) {
+                if (i != lockedUsersLen - 1) {
+                    // replace with the last
+                    playersLockedToWithdraw[i] = playersLockedToWithdraw[lockedUsersLen - 1];
+                }
+                // pop the last
+                playersLockedToWithdraw.pop();
+                break;
+            }
+        }
+        withdrawLocks[_player] = false;
     }
 
     function _startRolling(bool _manualRandomness)

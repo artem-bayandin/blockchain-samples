@@ -20,7 +20,7 @@ interface IChainlinkDataFeeder {
     function getAvailableTokens() external view returns(AvailableTokensToDeposit[] memory);
     
     /// @notice Returns true if token is in the list of avalable tokens
-    function isTokenAvailable(address _token) external view returns(bool);
+    function isTokenProxyAvailable(address _token) external view returns(bool);
     
     /// @notice Adds a chainlink proxy of a token-to-usd pair
     function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) external;
@@ -128,7 +128,7 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     }
 
     /// @notice Returns true if token is in the list of avalable tokens
-    function isTokenAvailable(address _token)
+    function isTokenProxyAvailable(address _token)
     override
     public
     view
