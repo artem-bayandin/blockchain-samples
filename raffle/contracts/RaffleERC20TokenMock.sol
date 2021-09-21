@@ -13,8 +13,7 @@ import './Adminable.sol';
 /// @notice ERC20 token mock to be used in tests
 /// @dev Admin permission management might be moved into a separate abstract contract.
 contract RaffleERC20TokenMock is ERC20, Adminable {
-    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {
-    }
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) { }
     
     /// @notice Mints token to a msg.sender
     function mint(uint256 _amount)

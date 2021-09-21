@@ -51,8 +51,10 @@ struct AvailableTokensToDeposit {
 
 
 /// @title ChainlinkDataFeederBase
-/// @notice Base abstract PriceOracle contract with all the logic
-/// @dev Inherited contracts should set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth
+/// @notice Base abstract PriceOracle contract with all the logic.
+/// @dev Inherited contracts should set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth.
+/// @dev Proxies might be set at any time.
+/// @dev If no proxies set, or addresses are invalid (no way to validate an address), then execution of price retrieval will most likely throw an error.
 abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     /// @notice An array of token addresses for which price is fetched via Token-USD and ETH-USD scheme
     address[] private usdTokens;
@@ -210,7 +212,7 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
 /// @title ChainlinkDataFeederInEthMainnet
 /// @notice PriceOracle setting for ETH Mainnet
 contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
-    constructor () {
+    constructor() {
         setEthTokenProxy(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419, 8);
         
         addTokenToEth(0x514910771AF9Ca656af840dff83E8264EcF986CA, "LINK", 0xDC530D9457755926550b59e8ECcdaE7624181557, 18);
@@ -225,7 +227,7 @@ contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
 /// @title ChainlinkDataFeederInRinkeby
 /// @notice PriceOracle setting for Rinkeby Testnet
 contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
-    constructor () {
+    constructor() {
         setEthTokenProxy(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e, 8);
         
         // addresses of tokens relate to contracts in etherscan, not a rinkeby one - when deploying find the valid ones
@@ -234,5 +236,24 @@ contract ChainlinkDataFeederInRinkeby is ChainlinkDataFeederBase {
         addTokenToUsd(0xB8c77482e45F1F44dE1745F52C74426C631bDD52, "BNB", 0xcf0f51ca2cDAecb464eeE4227f5295F2384F84ED, 8);
         addTokenToUsd(0xE1Be5D3f34e89dE342Ee97E6e90D405884dA6c67, "TRX", 0xb29f616a0d54FF292e997922fFf46012a63E2FAe, 8);
         addTokenToUsd(0xE41d2489571d322189246DaFA5ebDe1F4699F498, "ZRX", 0xF7Bbe4D7d13d600127B6Aa132f1dCea301e9c8Fc, 8);
+    }
+}
+
+
+/// @title ChainlinkDataFeeder sample.
+/// @notice PriceOracle without any predefined settings.
+contract ChainlinkDataFeeder is ChainlinkDataFeederBase {
+    constructor() {
+        /// @dev Set ETH price proxy.
+        // setEthTokenProxy(_ethProxyAddress, _ethDecimals);
+
+        /// @dev Set Token/ETH price proxy.
+        /// @dev When Token/ETH price is requested, then a single call to a proxy will happen.
+        // addTokenToEth(_tokenAddress, _tokenSymbol, _tokenToEthProxyAddress, _tokenDecimals);
+
+        /// @dev Set Token/USD price proxy.
+        /// @dev When Token/ETH price is requested, two calls to a proxy will happen: one to get Token/USD price, another to get ETH/USD price.
+        /// @dev When two prices are received, final Token/ETH will be calculated.
+        // addTokenToUsd(_tokenAddress, _tokenSymbol, _tokenToUsdProxyAddress, _tokenDecimals);
     }
 }

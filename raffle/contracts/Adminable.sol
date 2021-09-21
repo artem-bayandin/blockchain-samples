@@ -4,8 +4,9 @@ pragma solidity ^0.8.7;
 
 
 /// @title Adminable
-/// @notice Contains several methods to manage general admins for a contract
-/// @dev Kinda 'Ownable', but with extended functions
+/// @notice Contains several methods to manage general admins for a contract.
+/// @dev Kinda 'Ownable', but with extended functions.
+/// @dev Initial msg.sender is equal to an admin, there's no difference at the moment between an added admin and a contract deployer.
 abstract contract Adminable {
     /// @notice An array of addresses who has admin permissions
     address[] private admins;

@@ -31,7 +31,7 @@ interface IUniswapExchange {
 }
 */
 
-contract NonReentrant {
+contract NonReentrant3 {
     bool private contractLocked;
     mapping(string => bool) lockedMethods;
     mapping(string => mapping(address => bool)) lockedMethodsForUsers;
@@ -90,13 +90,13 @@ contract NonReentrant {
     }
 }
 
-struct Bids {
+struct Bids3 {
     address[] tokens;
     uint256 totalChance;
     mapping(address => uint256) amounts;
 }
 
-struct WinnerRecord {
+struct WinnerRecord3 {
     address winner;
     uint256 timestamp;
     bool hasWithdrawn;
@@ -147,7 +147,7 @@ struct WinnerRecord {
         IQuoter             0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6
 */
 
-contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
+contract Raffle3 is Ownable, NonReentrant3, VRFConsumerBase {
     // 2 ** 256 - 1
     uint256 constant MAX_ALLOWANCE = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     uint256 maxPlayers;
@@ -176,7 +176,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
     // helps to define whether address is playing at the moment
     mapping(address => bool) activePlayers;
     // bids by player
-    mapping(address => Bids) bids;
+    mapping(address => Bids3) bids;
     
     // current tokens in a game
     address[] tokens;
@@ -186,7 +186,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
     // winner => timestamp[]
     mapping(address => uint256[]) winnerTimestamps;
     // winner => timestamp => WinnerRecord
-    mapping(address => mapping(uint256 => WinnerRecord)) winners;
+    mapping(address => mapping(uint256 => WinnerRecord3)) winners;
     
     event MaxPlayersNumberChanged(uint256 oldValue, uint256 newValue);
     event TicketFeeChanged(uint256 oldValue, uint256 newValue);
@@ -297,7 +297,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
     }
 
     
-    function getEstimatedEthPrice(address _token, uint256 _amount) public returns(uint256) {
+    function getEstimatedEthPrice(address _token, uint256 _amount) public pure returns(uint256) {
         // TODO
         return _amount;
     }
@@ -393,7 +393,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
         }
         
         // alter player's bids
-        Bids storage playerBids = bids[msgSender];
+        Bids3 storage playerBids = bids[msgSender];
         if (playerBids.amounts[_token] == 0) {
             playerBids.tokens.push(_token);
         }
@@ -494,7 +494,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
         
         uint256 timestamp = block.timestamp;
         
-        WinnerRecord storage winRecord = winners[_winner][timestamp];
+        WinnerRecord3 storage winRecord = winners[_winner][timestamp];
         
         winRecord.winner = _winner;
         winRecord.timestamp = timestamp;
@@ -620,7 +620,7 @@ contract Raffle is Ownable, NonReentrant, VRFConsumerBase {
     }
 
     function _getWinnerRecord(address _winner, uint256 _timestamp) public view returns(address winner, uint256 timestamp, bool hasWithdrawn, uint256 ethPrize, address[] memory tokenAddresses) {
-        WinnerRecord storage rec = winners[_winner][_timestamp];
+        WinnerRecord3 storage rec = winners[_winner][_timestamp];
         return (rec.winner, rec.timestamp, rec.hasWithdrawn, rec.ethPrize, rec.tokens);
     }
     
