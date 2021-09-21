@@ -6,7 +6,7 @@ pragma solidity ^0.8.7;
 // IERC20 to transfer playable tokens
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 // random number oracle (Chainlink)
-import 'github.com/smartcontractkit/chainlink/blob/master/contracts/src/v0.8/VRFConsumerBase.sol';
+import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
 // on-chain price oracle (Chainlink)
 import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
@@ -138,7 +138,7 @@ contract Raffle is Adminable, VRFConsumerBase {
     /// @param _randomnessKeyHash a static hash for Chainlink randomness, depends on a network
     /// @param _randomnessFee a static fee for randomness, depends on a network
     /// @param _priceOracleAddress ad address of a PriceOracle
-    /*
+    
     constructor (
         uint256 _maxPlayers
         , uint256 _maxTokens
@@ -158,10 +158,9 @@ contract Raffle is Adminable, VRFConsumerBase {
         randomnessFee = _randomnessFee;
         priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
     }
-    */
 
     /// @dev Ctor for RinkebyNetwork (for simplicity)
-    
+    /*
     constructor(address _priceOracleAddress)
     VRFConsumerBase(0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, 0x01BE23585060835E02B77ef475b0Cc51aA1e0709)
     {
@@ -172,6 +171,7 @@ contract Raffle is Adminable, VRFConsumerBase {
         randomnessFee = 1 * 10 ** 17; // 0.1 LINK
         priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
     }
+    */
 
     /// @notice Allows a user only single call of a method.
     modifier noDepositReentrancy() {
