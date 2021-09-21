@@ -22,3 +22,14 @@ contract RaffleERC20TokenMock is ERC20, Adminable {
         _mint(_to, _amount);
     }
 }
+
+
+contract LinkMock is RaffleERC20TokenMock {
+    constructor(string memory _name, string memory _symbol) RaffleERC20TokenMock(_name, _symbol) { }
+}
+contract DaiMock is RaffleERC20TokenMock {
+    constructor(string memory _name, string memory _symbol) RaffleERC20TokenMock(_name, _symbol) { }
+}
+contract BnbMock is RaffleERC20TokenMock {
+    constructor(string memory _name, string memory _symbol) RaffleERC20TokenMock(_name, _symbol) { }
+}

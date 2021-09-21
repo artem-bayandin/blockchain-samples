@@ -16,8 +16,7 @@ contract AggregatorV3Mock is AggregatorV3Interface {
     uint256 private __version;
     int256 private __latestRoundPrice;
 
-    constructor(int256 _latestRoundPrice, uint8 _decimals) {
-        __latestRoundPrice = _latestRoundPrice;
+    constructor(uint8 _decimals) {
         __decimals = _decimals;
     }
 
@@ -53,7 +52,7 @@ contract AggregatorV3Mock is AggregatorV3Interface {
     function getRoundData(uint80 _roundId)
     override
     external
-    view
+    pure
     returns (
         uint80 roundId,
         int256 answer,
@@ -77,4 +76,18 @@ contract AggregatorV3Mock is AggregatorV3Interface {
     ) {
         return (0, __latestRoundPrice, 0, 0, 0); // hardcoded to zeros, as we do not need that data
     }
+}
+
+
+contract EthAggregatorMock is AggregatorV3Mock {
+    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+}
+contract LinkAggregatorMock is AggregatorV3Mock {
+    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+}
+contract DaiAggregatorMock is AggregatorV3Mock {
+    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+}
+contract BnbAggregatorMock is AggregatorV3Mock {
+    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
 }
