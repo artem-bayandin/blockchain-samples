@@ -3,7 +3,7 @@ const ChainlinkDataFeeder = artifacts.require('ChainlinkDataFeeder')
 const AggregatorV3Mock = artifacts.require('AggregatorV3Mock')
 const RaffleERC20TokenMock = artifacts.require('RaffleERC20TokenMock')
 
-import { erc20Mocks } from '../common/deployment'
+const { erc20Mocks } = require('../common/deployment')
 
 module.exports = async function (deployer, network, accounts) {
     const overwriteOptions = {
@@ -11,11 +11,18 @@ module.exports = async function (deployer, network, accounts) {
         overwrite: false
     }
 
-    // deploy Chainlinkdatafeeder, if not deployed
-    await deployer.deploy(ChainlinkDataFeeder, overwriteOptions)
-    const chainlinkPriceOracle = await ChainlinkDataFeeder.deployed()
+    if (network == 'devtest') {
+        console.log('DEV_TEST network is chosen, overriding all the contracts')
+        overwriteOptions.overwrite = true
+    }
 
-    if (network == 'development') {
+    if (network == 'development' || network == 'devtest') {
+        console.log(`Deploying to '${network}' with overwriteOptions:`, overwriteOptions)
+
+        // deploy Chainlinkdatafeeder, if not deployed
+        await deployer.deploy(ChainlinkDataFeeder, overwriteOptions)
+        const chainlinkPriceOracle = await ChainlinkDataFeeder.deployed()
+
         await Promise.all(erc20Mocks.map(async item => {
             // deploy 5 ERC20 token mocks, if not deployed
             await deployer.deploy(RaffleERC20TokenMock, item.name, item.symbol, overwriteOptions)
@@ -25,7 +32,7 @@ module.exports = async function (deployer, network, accounts) {
             await deployer.deploy(AggregatorV3Mock, item.initialProxyValue, item.decimals, overwriteOptions)
             const proxy = await AggregatorV3Mock.deployed()
             // connect proxies to tokens
-            item.proxy = proxy.address
+            item.proxyAddress = proxy.address
         }))
         // set up Chainlinkdatafeeder to point to currently deployed ERC20 mocks
         await deployer.deploy(AggregatorV3Mock, 3800, 8, overwriteOptions)
@@ -34,9 +41,9 @@ module.exports = async function (deployer, network, accounts) {
         await chainlinkPriceOracle.setEthTokenProxy(ethProxy.address, await ethProxy.decimals());
         await Promise.all(erc20Mocks.map(async item => {
             if (item.isUsd) {
-                await chainlinkPriceOracle.addTokenToUsd(item.tokenAddress, item.symbol, item.proxy, item.decimals)
+                await chainlinkPriceOracle.addTokenToUsd(item.tokenAddress, item.symbol, item.proxyAddress, item.decimals)
             } else {
-                await chainlinkPriceOracle.addTokenToEth(item.tokenAddress, item.symbol, item.proxy, item.decimals)
+                await chainlinkPriceOracle.addTokenToEth(item.tokenAddress, item.symbol, item.proxyAddress, item.decimals)
             }
         }))
         // deploy Raffle

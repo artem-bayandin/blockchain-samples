@@ -6,7 +6,7 @@
 const erc20Mocks = [{
     name: 'LINK mock',
     symbol: 'LINKM',
-    proxy: '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623',
+    proxyAddress: '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623',
     decimals: 8,
     isUsd: true,
     tokenAddress: null,
@@ -14,7 +14,7 @@ const erc20Mocks = [{
 }, {
     name: 'DAI mock',
     symbol: 'DAIM',
-    proxy: '0x74825DbC8BF76CC4e9494d0ecB210f676Efa001D',
+    proxyAddress: '0x74825DbC8BF76CC4e9494d0ecB210f676Efa001D',
     decimals: 18,
     isUsd: false,
     tokenAddress: null,
@@ -22,7 +22,7 @@ const erc20Mocks = [{
 }, {
     name: 'BNB mock',
     symbol: 'BNBM',
-    proxy: '0xcf0f51ca2cDAecb464eeE4227f5295F2384F84ED',
+    proxyAddress: '0xcf0f51ca2cDAecb464eeE4227f5295F2384F84ED',
     decimals: 8,
     isUsd: true,
     tokenAddress: null,
@@ -30,7 +30,7 @@ const erc20Mocks = [{
 }, {
     name: 'TRX mock',
     symbol: 'TRXM',
-    proxy: '0xb29f616a0d54FF292e997922fFf46012a63E2FAe',
+    proxyAddress: '0xb29f616a0d54FF292e997922fFf46012a63E2FAe',
     decimals: 8,
     isUsd: true,
     tokenAddress: null,
@@ -38,7 +38,7 @@ const erc20Mocks = [{
 }, {
     name: 'ZRX mock',
     symbol: 'ZRXM',
-    proxy: '0xF7Bbe4D7d13d600127B6Aa132f1dCea301e9c8Fc',
+    proxyAddress: '0xF7Bbe4D7d13d600127B6Aa132f1dCea301e9c8Fc',
     decimals: 8,
     isUsd: true,
     tokenAddress: null,
