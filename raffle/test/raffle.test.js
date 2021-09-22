@@ -12,7 +12,7 @@ const LinkMock = artifacts.require('LinkMock')
 const DaiMock = artifacts.require('DaiMock')
 const BnbMock = artifacts.require('BnbMock')
 
-// token to pay for chainlink randomness
+// randomness oracle mock
 const RandomnessOracleMock = artifacts.require('RandomnessOracleMock')
 
 const { erc20Mocks } = require('../common/deployment')
