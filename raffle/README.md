@@ -13,7 +13,7 @@ Some requirements/assumptions:
 - when the wheel is rolled, gameStatus becomes "Rolling", so that no one was able to deposit or roll the wheel;
 - two ways of generating a random number:
   - manual, via manual input of a 'random' number (`function rollTheDice(uint256 randomNumber)`);
-  - via chainlink oracle (`function rollTheDice()`);
+  - via randomness oracle (`function rollTheDice()`);
 - when a valid random number is found, sumOfUsersChances is calculated. To find a winner, the game simply summs personalChances one by one, until the number reaches (`randomNumber % sumOfUsersChances`);
 - when a winner is found, accumulated fee and all the tokens are assigned to a winner;
 - the winner needs to manually withdraw its tokens (to avoid some vulnerabilities);
