@@ -39,11 +39,13 @@ Improved:
 - migration migrates (`truffle migrate --network development --reset`)
 - environment for tests is done (`truffle test --network devtest`) (does not include open issue with mocking randomizer)
 
+Next:
+- extract interfaces and create an abstraction over chainlink randomizer, so that it could be possible to switch and/or mock a randomizer;
+- tests.
+
 Questions I have:
 
-- is it possible to move randomizer into a separate contract, so that it could be later injected into the game, instead of inheriting?
-- how to mock randomizer? (if inheritance is removed, then it'll be easy to mock it)
-- is it 'OK', that I have like the game contract, a contract for custom price oracle, an abstract contract for managing admin permissions (this one should be moved to 'utils' repo), and additionally I have 7 test contracts (mock-like) and I may need more? should I deploy them all in migration for my local network? (so that when deploying to production, I will only deploy the 3)
+- is it 'OK', that I have like the game contract, an abstraction for price oracle (and randomizer, soon), an abstract contract for managing admin permissions (this one should be moved to 'utils' repo), and additionally I have 7+ test contracts (mock-like) and I may need more? should I deploy them all in migration for my local network? (when deploying to production, I will only deploy the game and two abstractions)
 
 ### commit [492018f](https://github.com/artem-bayandin/blockchain-samples/commit/492018f92d33e8eb6c526953753acfed4da9b48a)
 
