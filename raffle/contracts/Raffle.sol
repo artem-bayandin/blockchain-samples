@@ -8,8 +8,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 
 import './Adminable.sol';
-import './RaffleERC20TokenMock.sol';
-import './ChainlinkDataFeeder.sol';
+import './PriceOracle.sol';
 import './RandomnessOracle.sol';
 
 
@@ -68,7 +67,7 @@ contract Raffle is Adminable, IRandomnessReceiver {
     /// @notice state variable to store current game state
     GameStatus private gameStatus;
 
-    /// @notice Chainlink randomness request id
+    /// @notice Randomness request id
     bytes32 private randomnessRequestId;
 
     /// @notice current players in a game
@@ -104,7 +103,7 @@ contract Raffle is Adminable, IRandomnessReceiver {
     IRandomnessOracle private randomnessOracle;
 
     /// @notice Price oracle
-    IChainlinkDataFeeder private priceOracle;
+    IPriceOracle private priceOracle;
 
     event PaymentReceived(address indexed msgSender, uint256 msgValue);
     event Deposited(address indexed msgSender, address indexed token, uint256 amount, uint256 chanceIncrement, uint256 totalChance, uint256 timestamp);
@@ -144,7 +143,7 @@ contract Raffle is Adminable, IRandomnessReceiver {
         maxTokens = _maxTokens;
         ticketFee = _ticketFee;
         randomnessOracle = IRandomnessOracle(_randomnessOracleAddress);
-        priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
+        priceOracle = IPriceOracle(_priceOracleAddress);
     }
 
     /// @dev Ctor for RinkebyNetwork (for simplicity)
@@ -305,7 +304,6 @@ contract Raffle is Adminable, IRandomnessReceiver {
     }
 
     /// @notice Admin function to roll the dice and find a winner.
-    /// @notice Utilizes a Chainlink random generator
     function rollTheDice()
     public 
     onlyAdmin
@@ -313,7 +311,7 @@ contract Raffle is Adminable, IRandomnessReceiver {
         // pause game
         _startRolling(false);
         // roll the dice
-        randomnessRequestId = randomnessOracle.askOracle();
+        randomnessRequestId = randomnessOracle.askOracleForRandomness();
         emit RandomnessRequested(block.timestamp, randomnessRequestId);
     }
 
@@ -591,12 +589,20 @@ contract Raffle is Adminable, IRandomnessReceiver {
         emit TicketFeeChanged(oldValue, ticketFee);
     }
     
+    /// @notice Updates the address of a RandomnessOracle
+    function setRandomnessOracle(address _oracleAddress)
+    public
+    onlyAdmin {
+        require(_oracleAddress != address(randomnessOracle), "RandomnessOracle address should not be the same as existing one.");
+        randomnessOracle = IRandomnessOracle(_oracleAddress);
+    }
+    
     /// @notice Updates the address of a PriceOracle
     function setPriceOracle(address _oracleAddress)
     public
     onlyAdmin {
         require(_oracleAddress != address(priceOracle), "PriceOracle address should not be the same as existing one.");
-        priceOracle = IChainlinkDataFeeder(_oracleAddress);
+        priceOracle = IPriceOracle(_oracleAddress);
     }
 
     /// @dev Region: Public getters for testing

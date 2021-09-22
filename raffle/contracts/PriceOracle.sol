@@ -9,27 +9,22 @@ import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import './Adminable.sol';
 
 
-/// @title IChainlinkDataFeeder
-/// @notice Interface for a price oracle
-/// @dev Deployment: a) deploy a PriceOracle; b) deploy a Raffle, passing address(PriceOracle) into ctor; c) call PriceOracle.addAdmin(address(Raffle)) to allow Raflle to administrate PriceOracle
-interface IChainlinkDataFeeder {
+interface IPriceOracle {
     /// @notice Main function of a PriceOracle - get ETH equivalent of a ERC20 token
     function getEthEquivalent(address _token, uint256 _amount) external view returns(uint256);
-    
+
     /// @notice Returns a list of tokens, for which prices might be queried
-    function getAvailableTokens() external view returns(AvailableTokensToDeposit[] memory);
-    
+    function getAvailableTokens() external view returns(PriceOracleToken[] memory);
+
     /// @notice Returns true if token is in the list of avalable tokens
     function isTokenProxyAvailable(address _token) external view returns(bool);
-    
-    /// @notice Adds a chainlink proxy of a token-to-usd pair
-    function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals) external;
+}
 
-    /// @notice Adds a chainlink proxy of a token-to-eth pair
-    function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals) external;
 
-    /// @notice Sets ETH price proxy address and amount of decimals of ETH
-    function setEthTokenProxy(address _proxy, uint8 _decimals) external;
+/// @title PriceOracleToken
+struct PriceOracleToken {
+    address token;
+    string label;
 }
 
 
@@ -43,19 +38,12 @@ struct ChainlinkDataFeedTokenRecord {
 }
 
 
-/// @title AvailableTokensToDeposit
-struct AvailableTokensToDeposit {
-    address token;
-    string label;
-}
-
-
-/// @title ChainlinkDataFeederBase
-/// @notice Base abstract PriceOracle contract with all the logic.
-/// @dev Inherited contracts should set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth.
-/// @dev Proxies might be set at any time.
+/// @title ChainlinkPriceOracle
+/// @notice Chainlink PriceOracle (Chainlink Data Feed) contract with all the logic.
+/// @dev To work properly, set the list of token proxies using setEthTokenProxy, addTokenToUsd, addTokenToEth.
+/// @dev Proxies for tokens might be set at any time.
 /// @dev If no proxies set, or addresses are invalid (no way to validate an address), then execution of price retrieval will most likely throw an error.
-abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
+contract ChainlinkPriceOracle is IPriceOracle, Adminable {
     /// @notice An array of token addresses for which price is fetched via Token-USD and ETH-USD scheme
     address[] private usdTokens;
     /// @notice Map of 'usd-based' tokens proxies
@@ -110,20 +98,20 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     override
     public
     view
-    returns(AvailableTokensToDeposit[] memory) {
+    returns(PriceOracleToken[] memory) {
         uint256 usdTokensLen = usdTokens.length;
         uint256 ethTokensLen = ethTokens.length;
         
-        AvailableTokensToDeposit[] memory result = new AvailableTokensToDeposit[](usdTokensLen + ethTokensLen);
+        PriceOracleToken[] memory result = new PriceOracleToken[](usdTokensLen + ethTokensLen);
 
         for (uint256 i = 0; i < usdTokensLen; i++) {
             ChainlinkDataFeedTokenRecord memory item = usdTokenMap[usdTokens[i]];
-            result[i] = AvailableTokensToDeposit(item.token, item.label);
+            result[i] = PriceOracleToken(item.token, item.label);
         }
 
         for (uint256 i = usdTokensLen; i < usdTokensLen + ethTokensLen; i++) {
             ChainlinkDataFeedTokenRecord memory item = ethTokenMap[ethTokens[i - usdTokensLen]];
-            result[i] = AvailableTokensToDeposit(item.token, item.label);
+            result[i] = PriceOracleToken(item.token, item.label);
         }
 
         return result;
@@ -142,7 +130,6 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
 
     /// @notice Adds a chainlink proxy of a token-to-usd pair
     function addTokenToUsd(address _token, string memory _label, address _proxy, uint8 _decimals)
-    override
     public
     onlyAdmin {
         ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
@@ -153,7 +140,6 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     
     /// @notice Adds a chainlink proxy of a token-to-eth pair
     function addTokenToEth(address _token, string memory _label, address _proxy, uint8 _decimals)
-    override
     public
     onlyAdmin {
         ChainlinkDataFeedTokenRecord memory rec = ChainlinkDataFeedTokenRecord(_token, _label, _proxy, _decimals);
@@ -163,7 +149,6 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
     
     /// @notice Sets ETH price proxy address and amount of decimals of ETH
     function setEthTokenProxy(address _proxy, uint8 _decimals)
-    override
     public
     onlyAdmin {
         ethProxy = _proxy;
@@ -209,6 +194,7 @@ abstract contract ChainlinkDataFeederBase is IChainlinkDataFeeder, Adminable {
 }
 
 
+/*
 /// @title ChainlinkDataFeederInEthMainnet
 /// @notice PriceOracle setting for ETH Mainnet
 contract ChainlinkDataFeederInEthMainnet is ChainlinkDataFeederBase {
@@ -257,3 +243,4 @@ contract ChainlinkDataFeeder is ChainlinkDataFeederBase {
         // addTokenToUsd(_tokenAddress, _tokenSymbol, _tokenToUsdProxyAddress, _tokenDecimals);
     }
 }
+*/

@@ -8,7 +8,7 @@ import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
 
 
 interface IRandomnessOracle {
-    function askOracle() external returns(bytes32 _requestId);
+    function askOracleForRandomness() external returns(bytes32 _requestId);
 }
 
 
@@ -58,7 +58,7 @@ contract ChainlinkRandomnessOracle is IRandomnessOracle, VRFConsumerBase {
         randomnessFee = _randomnessFee;
     }
 
-    function askOracle()
+    function askOracleForRandomness()
     override
     external
     returns(bytes32 _requestId) {

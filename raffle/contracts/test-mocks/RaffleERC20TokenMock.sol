@@ -6,7 +6,7 @@ pragma solidity ^0.8.7;
 // ERC20 token implementation for tests
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 
-import './Adminable.sol';
+import '../Adminable.sol';
 
 
 /// @title RaffleERC20TokenMock
