@@ -26,10 +26,25 @@ User deposits 1 LINK to the game. LINK / ETH = 0.008, fee applied = 0.0001 ETH, 
 User additionally deposits 1 BNB. BNB / ETH 0.12, fee applied = 0.0001 ETH, personalChanceToWin = 0.128 ETH.
 <br/>
 Other users deposit coins for 5 ETH in sum. Final chanceToWin for our user is 0.128 / 5 = 0.0256, what is 2.56%. Final value of tokens = 5 ETH + fee * numberOfDeposits.
+<br/>
+<br/>
+Further notes.
+- Randomness oracle. Chainlink randomness oracle asks for 2 LINK per request to run on ETH Mainnet, what is not so cheap. To make it cheaper, a separate contract might be created, which will collect requests for randomness (example in milestone [99c6fe8](https://github.com/artem-bayandin/blockchain-samples/commit/99c6fe8fa48f71540510fbe165a3ae545dd35ea7) - [ChainlinkRandomnessOracle](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/RandomnessOracle.sol)). Then some web service will query this contract against new requests received, and if any found, then web service will fill these requests with random values.
+- Price oracle. Current chainlink price oracle is abstracted with an interface, but is limited by the number of proxies for tokens and just ETH, Kovan and Rinkeby networks. It'd be nice to implement IPriceOracle for at least Uniswap, 1inch.
 
 ## Release increments
 
-### commit [a900a1f](https://github.com/artem-bayandin/blockchain-samples/commit/a900a1f1b1230b6f896e4f7f2a5534b0b3df79d4)
+### milestone [99c6fe8](https://github.com/artem-bayandin/blockchain-samples/commit/99c6fe8fa48f71540510fbe165a3ae545dd35ea7)
+
+_An outstanding milestone: Raffle game contract is from now abstracted from oracles, both price oracle and randomness oracle via its interfaces, what makes it easy to implemented a new oracle and switch the game to a new address. And all you need - just implement oracles as [IPriceOracle](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/PriceOracle.sol) and [IRandomnessOracle](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/RandomnessOracle.sol), and for randomness Raffle needs to implement [IRandomnessReceiver](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/RandomnessOracle.sol), as its functions are called when a number is generated._
+<br/>
+<br/>
+Migration file was updated. Test environment setup was updated. `truffle compile` succeeds. `truffle migrate --network development [--reset]` succeeds. `truffle test --network devtest` succeeds.
+<br/>
+<br/>
+Next to do: code tests, refactor contracts if needed.
+
+### milestone [a900a1f](https://github.com/artem-bayandin/blockchain-samples/commit/a900a1f1b1230b6f896e4f7f2a5534b0b3df79d4)
 
 Improved:
 
@@ -47,14 +62,14 @@ Questions I have:
 
 - is it 'OK', that I have like the game contract, an abstraction for price oracle (and randomizer, soon), an abstract contract for managing admin permissions (this one should be moved to 'utils' repo), and additionally I have 7+ test contracts (mock-like) and I may need more? should I deploy them all in migration for my local network? (when deploying to production, I will only deploy the game and two abstractions)
 
-### commit [492018f](https://github.com/artem-bayandin/blockchain-samples/commit/492018f92d33e8eb6c526953753acfed4da9b48a)
+### milestone [492018f](https://github.com/artem-bayandin/blockchain-samples/commit/492018f92d33e8eb6c526953753acfed4da9b48a)
 
 - [done] add `withdraw` functionality for a winner;
 - [done] refactor rolling the wheel, so that manually it'll require 2 steps: a) set the game status to 'rolling'; b) input 'random' number and trigger selection of a winner;
 - [done] create a custom ERC20 token to be able to test the code;
 - [almost] refactor roles (move method locks into Adminable.sol);
 
-### commit [407967a](https://github.com/artem-bayandin/blockchain-samples/commit/407967af9e59f8cb3a1bef8448776fa6e21dc76c)
+### milestone [407967a](https://github.com/artem-bayandin/blockchain-samples/commit/407967af9e59f8cb3a1bef8448776fa6e21dc76c)
 
 Chainlink data providers refactored:
 
@@ -72,7 +87,7 @@ Next steps:
 - code truffle tests;
 - code minimal UI.
 
-### commit [6fbe5d0](https://github.com/artem-bayandin/blockchain-samples/tree/6fbe5d0c9fd517066e5f2f643ef18160debf91dc)
+### milestone [6fbe5d0](https://github.com/artem-bayandin/blockchain-samples/tree/6fbe5d0c9fd517066e5f2f643ef18160debf91dc)
 - [Raffle3.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle3.sol) - a playground to manually test the logic and oracles. Manually, it works, being deployed to Rinkeby;
 - [Raffle.sol](https://github.com/artem-bayandin/blockchain-samples/blob/6fbe5d0c9fd517066e5f2f643ef18160debf91dc/raffle/contracts/Raffle.sol) - a cleaned version of Raffle3.sol, not yet tested, but ready to;
 - token allowance should be covered on a frontend, unlimited permissions will be requested (approve 2 ** 256 - 1);
