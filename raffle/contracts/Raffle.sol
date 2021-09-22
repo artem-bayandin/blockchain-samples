@@ -263,12 +263,6 @@ contract Raffle is Adminable, IRandomnessReceiver {
         for (uint256 i = timestampsLen - 1; i >= 0; i--) {
             uint256 ts = timestamps[i];
             WinnerRecord storage rec = winners[msgSender][ts];
-            /*
-            /// @notice an array of tokens a player won
-            address[] tokens;
-            /// @notice amounts per token a winner won
-            mapping(address => uint256) tokenAmounts;
-            */
             
             if (rec.hasWithdrawn) {
                 break;

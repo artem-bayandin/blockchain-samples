@@ -20,7 +20,6 @@ interface IRandomnessReceiver {
 /// @dev check LINK balance of a contract
 /// @dev and/or use delegatecall or something
 /// @dev or restrict usage of oracle just to my contract
-
 contract ChainlinkRandomnessOracle is IRandomnessOracle, VRFConsumerBase {
     /// @notice Chainlink randomness key hash
     bytes32 immutable private randomnessKeyHash;

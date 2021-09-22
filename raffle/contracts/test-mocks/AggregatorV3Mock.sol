@@ -10,7 +10,7 @@ import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 /// @title AggregatorV3Mock
 /// @notice
 /// @dev
-contract AggregatorV3Mock is AggregatorV3Interface {
+abstract contract AggregatorV3Mock is AggregatorV3Interface {
     uint8 private __decimals;
     string private __description;
     uint256 private __version;
