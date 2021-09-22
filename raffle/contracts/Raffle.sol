@@ -5,15 +5,12 @@ pragma solidity ^0.8.7;
 
 // IERC20 to transfer playable tokens
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-// random number oracle (Chainlink)
-import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
-// on-chain price oracle (Chainlink)
-import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 
 import './Adminable.sol';
 import './RaffleERC20TokenMock.sol';
 import './ChainlinkDataFeeder.sol';
+import './RandomnessOracle.sol';
 
 
 /// @title Raffle game
@@ -23,7 +20,7 @@ import './ChainlinkDataFeeder.sol';
 /// @dev Two ways to work with random numbers are implemented:
 /// @dev - owner triggers a dice, and random number is requested from an oracle;
 /// @dev - owner triggers a dice with a random number (in this case, this might be triggered manually from UI, or from server using HDWalletProvider).
-contract Raffle is Adminable, VRFConsumerBase {
+contract Raffle is Adminable, IRandomnessReceiver {
 
     /// @notice bids of a player in an ongoing game
     struct Bids {
@@ -71,10 +68,6 @@ contract Raffle is Adminable, VRFConsumerBase {
     /// @notice state variable to store current game state
     GameStatus private gameStatus;
 
-    /// @notice Chainlink randomness key hash
-    bytes32 immutable private randomnessKeyHash;
-    /// @notice Chainlink randomness fee
-    uint256 immutable private randomnessFee;
     /// @notice Chainlink randomness request id
     bytes32 private randomnessRequestId;
 
@@ -106,7 +99,10 @@ contract Raffle is Adminable, VRFConsumerBase {
     address[] playersLockedToWithdraw;
     /// @notice reentrancy corresponding mapping
     mapping(address => bool) withdrawLocks;
-    
+
+    /// @notice Randomness oracle
+    IRandomnessOracle private randomnessOracle;
+
     /// @notice Price oracle
     IChainlinkDataFeeder private priceOracle;
 
@@ -117,9 +113,10 @@ contract Raffle is Adminable, VRFConsumerBase {
     event RandomnessRequested(uint256 timestamp, bytes32 indexed randomnessRequestId);
     event RandomNumberManuallySet(uint256 randomNumber, uint256 timestamp);
     event FixingFailedOracleRandomness(bytes32 indexed randomnessRequestId, uint256 randomNumber, uint256 timestamp);
-    event RandomnessCallbackReceived(bytes32 indexed randomnessRequestId, uint256 randomNumber);
-    event RandomnessGameStatusOnFullfilledFailed(uint8 gameStatus, bytes32 indexed randomnessRequestId, bytes32 indexed receivedRandomnessRequestId, uint256 randomNumber);
-    event RandomnessRequestIdFailed(bytes32 indexed randomnessRequestId, bytes32 indexed receivedRandomnessRequestId, uint256 randomNumber);
+    event RandomnessCallbackReceived(bytes32 indexed randomnessRequestId, uint256 randomNumber, string errorMessage);
+    event RandomnessFailedOnGameStatus(uint8 gameStatus, bytes32 indexed randomnessRequestId, bytes32 indexed receivedRandomnessRequestId, uint256 randomNumber);
+    event RandomnessFailedOnRequestId(bytes32 indexed randomnessRequestId, bytes32 indexed receivedRandomnessRequestId, uint256 randomNumber);
+    event RandomnessFailedExternally(bytes32 requestId, string errorMessage);
     event RandomValueCalculated(uint256 receivedRandomNumber, uint256 totalChanceSum, uint256 finalRandomNumber);
     event WinnerAddressIsChosen(address indexed winner, uint256 timestamp);
     event PrizeAssigned(address indexed winner, uint256 indexed timestamp, uint256 ethPrize);
@@ -133,29 +130,20 @@ contract Raffle is Adminable, VRFConsumerBase {
     /// @param _maxPlayers max number of players to play a single game; needed to limit a for-loop
     /// @param _maxTokens max number of tokens to be deposited in a single game; needed to limit a for-loop
     /// @param _ticketFee a fee for a single deposit action
-    /// @param _vrfCoordinator a static address of Chainlink vrfCoordinator for randomness, depends on a network
-    /// @param _linkToken a static address of Chainlink LINK token to be used for randomness, depends on a network
-    /// @param _randomnessKeyHash a static hash for Chainlink randomness, depends on a network
-    /// @param _randomnessFee a static fee for randomness, depends on a network
-    /// @param _priceOracleAddress ad address of a PriceOracle
+    /// @param _randomnessOracleAddress an address of a Randomness oracle
+    /// @param _priceOracleAddress an address of a Price oracle
     
     constructor (
         uint256 _maxPlayers
         , uint256 _maxTokens
         , uint256 _ticketFee
-        , address _vrfCoordinator
-        , address _linkToken
-        , bytes32 _randomnessKeyHash
-        , uint256 _randomnessFee
+        , address _randomnessOracleAddress
         , address _priceOracleAddress
-    )
-    VRFConsumerBase(_vrfCoordinator, _linkToken)
-    {
+    ) {
         maxPlayers = _maxPlayers;
         maxTokens = _maxTokens;
         ticketFee = _ticketFee;
-        randomnessKeyHash = _randomnessKeyHash;
-        randomnessFee = _randomnessFee;
+        randomnessOracle = IRandomnessOracle(_randomnessOracleAddress);
         priceOracle = IChainlinkDataFeeder(_priceOracleAddress);
     }
 
@@ -322,11 +310,10 @@ contract Raffle is Adminable, VRFConsumerBase {
     public 
     onlyAdmin
     requireGameStatus(GameStatus.GAMING) {
-        require(LINK.balanceOf(address(this)) >= randomnessFee, "Not enough LINK to use Oracle for randomness.");
         // pause game
         _startRolling(false);
         // roll the dice
-        randomnessRequestId = requestRandomness(randomnessKeyHash, randomnessFee);
+        randomnessRequestId = randomnessOracle.askOracle();
         emit RandomnessRequested(block.timestamp, randomnessRequestId);
     }
 
@@ -361,28 +348,33 @@ contract Raffle is Adminable, VRFConsumerBase {
         _proceedWithRandomNumber(_randomNumber);
     }
 
-    /// @dev Region: Randomness callback
+    /// @dev Region: Randomness callbacks
 
-    /// @notice VRFConsumerBase callback function when random number was generated.
-    /// @dev Performs some validations, and if failed, sets gameStatus to RANDOM_REQUEST_FAILED, and an issue should be resolved via 'fixRolling'.
-    function fulfillRandomness(bytes32 _requestId, uint256 _randomNumber)
-    internal
-    override {
-        emit RandomnessCallbackReceived(_requestId, _randomNumber);
+    function randomnessSucceeded(bytes32 _requestId, uint256 _randomNumber)
+    override
+    external {
+        emit RandomnessCallbackReceived(_requestId, _randomNumber, "");
 
         if (gameStatus != GameStatus.GAMING) {
             gameStatus = GameStatus.RANDOM_REQUEST_FAILED;
-            emit RandomnessGameStatusOnFullfilledFailed(uint8(gameStatus), randomnessRequestId, _requestId, _randomNumber);
+            emit RandomnessFailedOnGameStatus(uint8(gameStatus), randomnessRequestId, _requestId, _randomNumber);
             revert("Invalid current game status. Ask your admin to manually fix the issue.");
         }
 
         if (_requestId != randomnessRequestId) {
             gameStatus = GameStatus.RANDOM_REQUEST_FAILED;
-            emit RandomnessRequestIdFailed(randomnessRequestId, _requestId, _randomNumber);
+            emit RandomnessFailedOnRequestId(randomnessRequestId, _requestId, _randomNumber);
             revert("Randomness requestIds do not coinside. Ask your admin to roll the dice manually.");
         }
 
         _proceedWithRandomNumber(_randomNumber);
+    }
+    
+    function randomnessFailed(bytes32 _requestId, string memory _errorMessage)
+    override
+    external {
+        emit RandomnessCallbackReceived(_requestId, 0, _errorMessage);
+        emit RandomnessFailedExternally(_requestId, _errorMessage);
     }
 
     /// @dev Region: Private methods
@@ -642,20 +634,6 @@ contract Raffle is Adminable, VRFConsumerBase {
     view
     returns (uint8) {
         return uint8(gameStatus);
-    }
-    
-    function __getRandomnessKeyHash() 
-    public
-    view
-    returns (bytes32) {
-        return randomnessKeyHash;
-    }
-    
-    function __getRandomnessFee() 
-    public
-    view
-    returns (uint256) {
-        return randomnessFee;
     }
     
     function __getRandomnessRequestId() 
