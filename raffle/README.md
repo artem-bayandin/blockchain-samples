@@ -34,6 +34,14 @@ Further notes.
 
 ## Release increments
 
+### milestone [d4503c6](https://github.com/artem-bayandin/blockchain-samples/commit/d4503c63119c2e5f5f601d2b9430e8f272b097e2)
+
+- samples of tests for `deposit()` were added (validates amounts of tokens deposited, and collected fee);
+- RaffleExtended contract was extracted from Raffle not to pollute Raffle with getters/setters for tests;
+- interfaces and implementations of oracles were split into separate files.
+
+Notes. Most likely, there will be a pause in development after this milestone, as all the major practices are implemented. To the moment, game contracts contain around 1k lines of code, plus test files contain another 1k lines of code.
+
 ### milestone [99c6fe8](https://github.com/artem-bayandin/blockchain-samples/commit/99c6fe8fa48f71540510fbe165a3ae545dd35ea7)
 
 _An outstanding milestone: Raffle game contract is from now abstracted from oracles, both price oracle and randomness oracle via its interfaces, what makes it easy to implemented a new oracle and switch the game to a new address. And all you need - just implement oracles as [IPriceOracle](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/PriceOracle.sol) and [IRandomnessOracle](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/RandomnessOracle.sol), and for randomness Raffle needs to implement [IRandomnessReceiver](https://github.com/artem-bayandin/blockchain-samples/blob/99c6fe8fa48f71540510fbe165a3ae545dd35ea7/raffle/contracts/RandomnessOracle.sol), as its functions are called when a number is generated._
@@ -48,7 +56,7 @@ Next to do: code tests, refactor contracts if needed.
 
 Improved:
 
-- obsolete Raffle3.sol file deleted;
+- obsolete Raffle3.sol file was deleted;
 - added test mocks for erc20 tokens;
 - added test mocks for chainlink price oracles;
 - migration migrates (`truffle migrate --network development --reset`)
@@ -58,16 +66,12 @@ Next:
 - extract interfaces and create an abstraction over chainlink randomizer, so that it could be possible to switch and/or mock a randomizer;
 - tests.
 
-Questions I have:
-
-- is it 'OK', that I have like the game contract, an abstraction for price oracle (and randomizer, soon), an abstract contract for managing admin permissions (this one should be moved to 'utils' repo), and additionally I have 7+ test contracts (mock-like) and I may need more? should I deploy them all in migration for my local network? (when deploying to production, I will only deploy the game and two abstractions)
-
 ### milestone [492018f](https://github.com/artem-bayandin/blockchain-samples/commit/492018f92d33e8eb6c526953753acfed4da9b48a)
 
-- [done] add `withdraw` functionality for a winner;
-- [done] refactor rolling the wheel, so that manually it'll require 2 steps: a) set the game status to 'rolling'; b) input 'random' number and trigger selection of a winner;
-- [done] create a custom ERC20 token to be able to test the code;
-- [almost] refactor roles (move method locks into Adminable.sol);
+- [done] added `withdraw` functionality for a winner;
+- [done] refactored rolling the wheel, so that manually it'll require 2 steps: a) set the game status to 'rolling'; b) input 'random' number and trigger selection of a winner;
+- [done] created a custom ERC20 token to be able to test the code;
+- [almost] refactored roles (move method locks into Adminable.sol);
 
 ### milestone [407967a](https://github.com/artem-bayandin/blockchain-samples/commit/407967af9e59f8cb3a1bef8448776fa6e21dc76c)
 
