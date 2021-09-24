@@ -8,8 +8,8 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 
 import './Adminable.sol';
-import './PriceOracle.sol';
-import './RandomnessOracle.sol';
+import './IPriceOracle.sol';
+import './IRandomnessOracle.sol';
 
 
 /// @title Raffle game
@@ -49,61 +49,61 @@ contract Raffle is Adminable, IRandomnessReceiver {
 
     /// @notice the amount of players that may play a single game
     /// @notice limits future gas fees, when for-looping players array
-    uint256 private maxPlayers;
+    uint256 internal maxPlayers;
 
     /// @notice the amount of tokens that might be deposited in a single game
     /// @notice limits future gas fees, when for-looping tokens array
-    uint256 private maxTokens;
+    uint256 internal maxTokens;
 
     /// @notice price to 'get a ticket'
-    uint256 private ticketFee;
+    uint256 internal ticketFee;
 
     /// @notice let's imaging, that we transfer all the collected fees to a winner
     /// @notice no business value, just show a pattern to work with address(this).balance
-    uint256 private collectedFee;
+    uint256 internal collectedFee;
 
     /// @notice states of a game, kinda state machine, to define which functions might be triggered
     enum GameStatus { GAMING, ROLLING, RANDOM_REQUEST_FAILED, RANDOM_RECEIVED, WINNER_CHOSEN }
     /// @notice state variable to store current game state
-    GameStatus private gameStatus;
+    GameStatus internal gameStatus;
 
     /// @notice Randomness request id
-    bytes32 private randomnessRequestId;
+    bytes32 internal randomnessRequestId;
 
     /// @notice current players in a game
-    address[] private players;
+    address[] internal players;
     /// @notice helps to define whether address is playing at the moment
-    mapping(address => bool) private activePlayers;
+    mapping(address => bool) internal activePlayers;
     /// @notice bids by player
-    mapping(address => Bids) private bids;
+    mapping(address => Bids) internal bids;
     
     /// @notice current tokens in a game
-    address[] private tokens;
+    address[] internal tokens;
     /// @notice amount deposited by each token
-    mapping(address => uint256) private bidsByToken;
+    mapping(address => uint256) internal bidsByToken;
     
     /// @notice maps a winner to games it won
     /// @dev winner => timestamp[]
-    mapping(address => uint256[]) private winnerTimestamps;
+    mapping(address => uint256[]) internal winnerTimestamps;
     /// @notice winner prizes and their state
     /// @dev winner => timestamp => WinnerRecord
-    mapping(address => mapping(uint256 => WinnerRecord)) private winners;
+    mapping(address => mapping(uint256 => WinnerRecord)) internal winners;
 
     /// @notice reentrancy lock for a player to be able to step into deposit func only once
-    address[] playersLockedToDeposit;
+    address[] internal playersLockedToDeposit;
     /// @notice reentrancy corresponding mapping
-    mapping(address => bool) depositLocks;
+    mapping(address => bool) internal depositLocks;
 
     /// @notice reentrancy lock for a player to be able to step into withdraw func only once
-    address[] playersLockedToWithdraw;
+    address[] internal playersLockedToWithdraw;
     /// @notice reentrancy corresponding mapping
-    mapping(address => bool) withdrawLocks;
+    mapping(address => bool) internal withdrawLocks;
 
     /// @notice Randomness oracle
-    IRandomnessOracle private randomnessOracle;
+    IRandomnessOracle internal randomnessOracle;
 
     /// @notice Price oracle
-    IPriceOracle private priceOracle;
+    IPriceOracle internal priceOracle;
 
     event PaymentReceived(address indexed msgSender, uint256 msgValue);
     event Deposited(address indexed msgSender, address indexed token, uint256 amount, uint256 chanceIncrement, uint256 totalChance, uint256 timestamp);
@@ -197,7 +197,9 @@ contract Raffle is Adminable, IRandomnessReceiver {
         emit PaymentReceived(msg.sender, msg.value);
     }
 
+
     /// @dev Region: Public methods
+
 
     /// @notice Main function for a player.
     /// @notice Token should be previously approved to be managed by the game
@@ -340,7 +342,59 @@ contract Raffle is Adminable, IRandomnessReceiver {
         _proceedWithRandomNumber(_randomNumber);
     }
 
+
+    /// @dev Region: Getters and setters methods
+
+
+    /// @notice Sets the max number of players to play a single game
+    function setMaxPlayers(uint256 _maxPlayers)
+    public
+    onlyAdmin {
+        require(_maxPlayers > 1, "There should be at least 2 players.");
+        uint256 oldValue = maxPlayers;
+        maxPlayers = _maxPlayers;
+        emit MaxPlayersNumberChanged(oldValue, maxPlayers);
+    }
+
+    /// @notice Sets the max number of different ERC20 tokens to be deposited within one game
+    function setMaxTokens(uint256 _maxTokens)
+    public
+    onlyAdmin {
+        require(_maxTokens >= 1, "There should be at least 1 token allowed for deposit.");
+        uint256 oldValue = maxTokens;
+        maxTokens = _maxTokens;
+        emit MaxTokensNumberChanged(oldValue, maxTokens);
+    }
+    
+    /// @notice Sets the ticket fee to deposit tokens
+    function setTicketFee(uint256 _ticketFee)
+    public
+    onlyAdmin {
+        require(_ticketFee > 0, "Fee should be greate than 0.");
+        uint256 oldValue = ticketFee;
+        ticketFee = _ticketFee;
+        emit TicketFeeChanged(oldValue, ticketFee);
+    }
+    
+    /// @notice Updates the address of a RandomnessOracle
+    function setRandomnessOracle(address _oracleAddress)
+    public
+    onlyAdmin {
+        require(_oracleAddress != address(randomnessOracle), "RandomnessOracle address should not be the same as existing one.");
+        randomnessOracle = IRandomnessOracle(_oracleAddress);
+    }
+    
+    /// @notice Updates the address of a PriceOracle
+    function setPriceOracle(address _oracleAddress)
+    public
+    onlyAdmin {
+        require(_oracleAddress != address(priceOracle), "PriceOracle address should not be the same as existing one.");
+        priceOracle = IPriceOracle(_oracleAddress);
+    }
+
+
     /// @dev Region: Randomness callbacks
+
 
     function randomnessSucceeded(bytes32 _requestId, uint256 _randomNumber)
     override
@@ -369,7 +423,9 @@ contract Raffle is Adminable, IRandomnessReceiver {
         emit RandomnessFailedExternally(_requestId, _errorMessage);
     }
 
+
     /// @dev Region: Private methods
+
 
     function _isUserLockedToDeposit(address _player)
     private
@@ -539,8 +595,9 @@ contract Raffle is Adminable, IRandomnessReceiver {
         emit GameRestarted(block.timestamp);
     }
 
+    /// @dev Internal visibility to have an access to this function in RaffleExtended contract for tests
     function _calcCurrentTotalChance()
-    private
+    internal
     view
     returns (uint256) {
         uint256 totalChanceSum = 0;
@@ -551,202 +608,6 @@ contract Raffle is Adminable, IRandomnessReceiver {
         return totalChanceSum;
     }
 
-    /// @dev Region: Getters and setters methods
-
-    /// @notice Sets the max number of players to play a single game
-    function setMaxPlayers(uint256 _maxPlayers)
-    public
-    onlyAdmin {
-        require(_maxPlayers > 1, "There should be at least 2 players.");
-        uint256 oldValue = maxPlayers;
-        maxPlayers = _maxPlayers;
-        emit MaxPlayersNumberChanged(oldValue, maxPlayers);
-    }
-
-    /// @notice Sets the max number of different ERC20 tokens to be deposited within one game
-    function setMaxTokens(uint256 _maxTokens)
-    public
-    onlyAdmin {
-        require(_maxTokens >= 1, "There should be at least 1 token allowed for deposit.");
-        uint256 oldValue = maxTokens;
-        maxTokens = _maxTokens;
-        emit MaxTokensNumberChanged(oldValue, maxTokens);
-    }
-    
-    /// @notice Sets the ticket fee to deposit tokens
-    function setTicketFee(uint256 _ticketFee)
-    public
-    onlyAdmin {
-        require(_ticketFee > 0, "Fee should be greate than 0.");
-        uint256 oldValue = ticketFee;
-        ticketFee = _ticketFee;
-        emit TicketFeeChanged(oldValue, ticketFee);
-    }
-    
-    /// @notice Updates the address of a RandomnessOracle
-    function setRandomnessOracle(address _oracleAddress)
-    public
-    onlyAdmin {
-        require(_oracleAddress != address(randomnessOracle), "RandomnessOracle address should not be the same as existing one.");
-        randomnessOracle = IRandomnessOracle(_oracleAddress);
-    }
-    
-    /// @notice Updates the address of a PriceOracle
-    function setPriceOracle(address _oracleAddress)
-    public
-    onlyAdmin {
-        require(_oracleAddress != address(priceOracle), "PriceOracle address should not be the same as existing one.");
-        priceOracle = IPriceOracle(_oracleAddress);
-    }
-
     /// @dev Region: Public getters for testing
-
-    function __getMaxPlayers() 
-    public
-    view
-    returns (uint256) {
-        return maxPlayers;
-    }
-
-    function __getMaxTokens() 
-    public
-    view
-    returns (uint256) {
-        return maxTokens;
-    }
-    
-    function __getTicketFee() 
-    public
-    view
-    returns (uint256) {
-        return ticketFee;
-    }
-
-    function __getRandomnessOracleAddress()
-    public
-    view
-    returns (address) {
-        return address(randomnessOracle);
-    }
-
-    function __getPriceOracleAddress()
-    public
-    view
-    returns (address) {
-        return address(priceOracle);
-    }
-    
-    function __getCollectedFee()
-    public
-    view
-    returns (uint256) {
-        return collectedFee;
-    }
-    
-    function __getGameStatus() 
-    public
-    view
-    returns (uint8) {
-        return uint8(gameStatus);
-    }
-    
-    function __getRandomnessRequestId() 
-    public
-    view
-    returns (bytes32) {
-        return randomnessRequestId;
-    }
-
-    function __getPlayers() 
-    public
-    view
-    returns (address[] memory) {
-        return players;
-    }
-
-    function __isPlayerActive(address _player) 
-    public
-    view
-    returns (bool) {
-        return activePlayers[_player];
-    }
-    
-    function __getUserChance(address _address) 
-    public
-    view
-    returns (uint256) {
-        return bids[_address].totalChance;
-    }
-
-    function __getPlayerChance1000(address _player) 
-    public
-    view
-    returns (uint256 value, uint32 base) {
-        return __getPlayerChance(_player, 1000);
-    }
-
-    function __getPlayerChance(address _player, uint32 _base) 
-    public
-    view
-    returns (uint256 value, uint32 base) {
-        uint256 totalChances = _calcCurrentTotalChance();
-        uint256 playerValue = bids[_player].totalChance;
-        return (playerValue * _base / totalChances, _base);
-    }
-
-    function __getPlayerBidsTokens(address _player) 
-    public
-    view
-    returns (address[] memory) {
-        return bids[_player].tokens;
-    }
-
-    function __getPlayerBidTokenAmount(address _player, address _token) 
-    public
-    view
-    returns (uint256) {
-        return bids[_player].amounts[_token];
-    }
-
-    function __getTokens() 
-    public
-    view
-    returns (address[] memory) {
-        return tokens;
-    }
-
-    function __getTokenBid(address _token) 
-    public
-    view
-    returns (uint256) {
-        return bidsByToken[_token];
-    }
-
-    function __getWinnerTimestamps(address _winner) 
-    public
-    view
-    returns (uint256[] memory) {
-        return winnerTimestamps[_winner];
-    }
-
-    function __getWinnerRecord(address _winner, uint256 _timestamp) 
-    public
-    view
-    returns (
-        address winner
-        , uint256 timestamp
-        , bool hasWithdrawn
-        , uint256 ethPrize
-        , address[] memory tokenAddresses
-    ) {
-        WinnerRecord storage rec = winners[_winner][_timestamp];
-        return (rec.winner, rec.timestamp, rec.hasWithdrawn, rec.ethPrize, rec.tokens);
-    }
-    
-    function __getWinnerTokenAmount(address _winner, uint256 _timestamp, address _token) 
-    public
-    view
-    returns (uint256) {
-        return winners[_winner][_timestamp].tokenAmounts[_token];
-    }
+    /// @dev Moved to RaffleExtended contract
 }

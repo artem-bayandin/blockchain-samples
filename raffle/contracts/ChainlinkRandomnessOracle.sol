@@ -6,16 +6,8 @@ pragma solidity ^0.8.7;
 // random number oracle (Chainlink)
 import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
 
+import './IRandomnessOracle.sol';
 
-interface IRandomnessOracle {
-    function askOracleForRandomness() external returns(bytes32 _requestId);
-}
-
-
-interface IRandomnessReceiver {
-    function randomnessSucceeded(bytes32 _requestId, uint256 _randomNumber) external;
-    function randomnessFailed(bytes32 _requestId, string memory _errorMessage) external;
-}
 
 /// @dev check LINK balance of a contract
 /// @dev and/or use delegatecall or something

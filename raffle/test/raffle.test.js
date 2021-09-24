@@ -1,4 +1,5 @@
-const Raffle = artifacts.require('Raffle')
+// const Raffle = artifacts.require('Raffle') // replaced with RaffleExtended
+const RaffleExtended = artifacts.require('RaffleExtended')
 const ChainlinkPriceOracle = artifacts.require('ChainlinkPriceOracle')
 const ChainlinkRandomnessOracle = artifacts.require('ChainlinkRandomnessOracle') // this one won't be needed for local test deployment, i assume
 
@@ -119,7 +120,7 @@ contract('Raffle', async accounts => {
         beforeEach(async () => {
             // deploy Raffle
             console.log('deploying raffle contract...')
-            raffle = await Raffle.new(
+            raffle = await RaffleExtended.new(
                 maxPlayers
                 , maxTokens
                 , ticketFee.toString() // 1,000,000,000 / 1,000,000,000,000,000,000

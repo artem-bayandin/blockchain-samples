@@ -3,7 +3,7 @@
 pragma solidity ^0.8.7;
 
 
-import '../RandomnessOracle.sol';
+import '../IRandomnessOracle.sol';
 
 
 contract RandomnessOracleMock is IRandomnessOracle {
