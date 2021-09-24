@@ -16,7 +16,7 @@ const BnbMock = artifacts.require('BnbMock')
 const RandomnessOracleMock = artifacts.require('RandomnessOracleMock')
 
 
-const { erc20Mocks } = require('../common/deployment')
+const { deploymentSettings } = require('../common/deployment')
 
 const setupTokenAndPriceOracle = async (mock, deployer, tokenContract, priceContract, overwriteOptions) => {
     // deploy 5 ERC20 token mocks, if not deployed
@@ -56,17 +56,17 @@ module.exports = async function (deployer, network, accounts) {
         await deployer.deploy(ChainlinkPriceOracle, overwriteOptions)
         const chainlinkPriceOracle = await ChainlinkPriceOracle.deployed()
         // setup tokens and price oracles
-        await setupTokenAndPriceOracle(erc20Mocks.link, deployer, LinkMock, LinkAggregatorMock, overwriteOptions)
-        await setupTokenAndPriceOracle(erc20Mocks.dai, deployer, DaiMock, DaiAggregatorMock, overwriteOptions)
-        await setupTokenAndPriceOracle(erc20Mocks.bnb, deployer, BnbMock, BnbAggregatorMock, overwriteOptions)
+        await setupTokenAndPriceOracle(deploymentSettings.link, deployer, LinkMock, LinkAggregatorMock, overwriteOptions)
+        await setupTokenAndPriceOracle(deploymentSettings.dai, deployer, DaiMock, DaiAggregatorMock, overwriteOptions)
+        await setupTokenAndPriceOracle(deploymentSettings.bnb, deployer, BnbMock, BnbAggregatorMock, overwriteOptions)
         // setup ETH price oracle
-        await deployer.deploy(EthAggregatorMock, erc20Mocks.eth.decimals, erc20Mocks.eth.initialProxyValue, overwriteOptions)
+        await deployer.deploy(EthAggregatorMock, deploymentSettings.eth.decimals, deploymentSettings.eth.initialProxyValue, overwriteOptions)
         const ethProxy = await EthAggregatorMock.deployed()
         // setup proxies
         await chainlinkPriceOracle.setEthTokenProxy(ethProxy.address, await ethProxy.decimals());
-        await setupProxy(erc20Mocks.link, chainlinkPriceOracle)
-        await setupProxy(erc20Mocks.dai, chainlinkPriceOracle)
-        await setupProxy(erc20Mocks.bnb, chainlinkPriceOracle)
+        await setupProxy(deploymentSettings.link, chainlinkPriceOracle)
+        await setupProxy(deploymentSettings.dai, chainlinkPriceOracle)
+        await setupProxy(deploymentSettings.bnb, chainlinkPriceOracle)
 
         // deploy custom IRandomnessOracle
         await deployer.deploy(RandomnessOracleMock, overwriteOptions)
@@ -94,7 +94,7 @@ module.exports = async function (deployer, network, accounts) {
             priceOracleAddress: chainlinkPriceOracle.address,
             ethProxyAddress: ethProxy.address,
             raffleAddress: raffle.address,
-            tokens: erc20Mocks
+            tokens: deploymentSettings
         })
     }
 

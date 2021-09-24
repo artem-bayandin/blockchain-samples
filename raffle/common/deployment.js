@@ -3,7 +3,7 @@
 // tokens are named similar to its originals to have less confusion
 // 'token' and 'tokenAddress' should be filled on deployment
 // 'initialProxyValue' is used for locally deployed proxies to set some initial value to be returned
-const erc20Mocks = {
+const deploymentSettings = {
     eth: {
         decimals: 8,
         initialProxyValue: (3800 * 10 ** 8).toString()
@@ -57,5 +57,5 @@ const erc20Mocks = {
 */
 
 module.exports = {
-    erc20Mocks
+    deploymentSettings
 }
