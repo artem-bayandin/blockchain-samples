@@ -16,8 +16,9 @@ abstract contract AggregatorV3Mock is AggregatorV3Interface {
     uint256 private __version;
     int256 private __latestRoundPrice;
 
-    constructor(uint8 _decimals) {
+    constructor(uint8 _decimals, int256 _price) {
         __decimals = _decimals;
+        __latestRoundPrice = _price;
     }
 
     function setLatestRoundPrice(int256 _newPrice)
@@ -80,14 +81,14 @@ abstract contract AggregatorV3Mock is AggregatorV3Interface {
 
 
 contract EthAggregatorMock is AggregatorV3Mock {
-    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+    constructor(uint8 _decimals, int256 _price) AggregatorV3Mock(_decimals, _price) { }
 }
 contract LinkAggregatorMock is AggregatorV3Mock {
-    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+    constructor(uint8 _decimals, int256 _price) AggregatorV3Mock(_decimals, _price) { }
 }
 contract DaiAggregatorMock is AggregatorV3Mock {
-    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+    constructor(uint8 _decimals, int256 _price) AggregatorV3Mock(_decimals, _price) { }
 }
 contract BnbAggregatorMock is AggregatorV3Mock {
-    constructor(uint8 _decimals) AggregatorV3Mock(_decimals) { }
+    constructor(uint8 _decimals, int256 _price) AggregatorV3Mock(_decimals, _price) { }
 }

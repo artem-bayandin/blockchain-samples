@@ -621,8 +621,22 @@ contract Raffle is Adminable, IRandomnessReceiver {
     returns (uint256) {
         return ticketFee;
     }
+
+    function __getRandomnessOracleAddress()
+    public
+    view
+    returns (address) {
+        return address(randomnessOracle);
+    }
+
+    function __getPriceOracleAddress()
+    public
+    view
+    returns (address) {
+        return address(priceOracle);
+    }
     
-    function __getCollectedFee() 
+    function __getCollectedFee()
     public
     view
     returns (uint256) {

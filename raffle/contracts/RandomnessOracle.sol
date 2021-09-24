@@ -39,6 +39,9 @@ contract ChainlinkRandomnessOracle is IRandomnessOracle, VRFConsumerBase {
     /// @notice msg.sender of a request
     mapping(bytes32 => address) requestReceivers;
 
+    /// @notice Event that is being fired when a randomness request was received.
+    event RandomnessRequestReceived(bytes32 indexed requestId, address indexed receiver, uint256 timestamp);
+
     /// @notice Event that is being fired when a randomness results was received.
     event RandomnessRequestResult(bytes32 indexed requestId, address indexed receiver, uint256 randomNumber, string result, uint256 timestamp);
 
@@ -61,11 +64,14 @@ contract ChainlinkRandomnessOracle is IRandomnessOracle, VRFConsumerBase {
     override
     external
     returns(bytes32 _requestId) {
+        address msgSender = msg.sender;
         // ask the oracle
         bytes32 requestId = requestRandomness(randomnessKeyHash, randomnessFee);
         // register request
         createdRequests[requestId] = true;
-        requestReceivers[requestId] = msg.sender;
+        requestReceivers[requestId] = msgSender;
+        // emit event
+        emit RandomnessRequestReceived(_requestId, msgSender, block.timestamp);
         // return
         return requestId;
     }

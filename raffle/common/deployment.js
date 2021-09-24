@@ -4,6 +4,10 @@
 // 'token' and 'tokenAddress' should be filled on deployment
 // 'initialProxyValue' is used for locally deployed proxies to set some initial value to be returned
 const erc20Mocks = {
+    eth: {
+        decimals: 8,
+        initialProxyValue: (3800 * 10 ** 8).toString()
+    },
     link: {
         name: 'LINK mock',
         symbol: 'LINKM',

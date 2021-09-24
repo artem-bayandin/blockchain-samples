@@ -24,7 +24,7 @@ const setupTokenAndPriceOracle = async (mock, deployer, tokenContract, priceCont
     const erc20Token = await tokenContract.deployed()
     mock.tokenAddress = erc20Token.address
     // deploy proxies
-    await deployer.deploy(priceContract, mock.decimals, overwriteOptions)
+    await deployer.deploy(priceContract, mock.decimals, mock.initialProxyValue, overwriteOptions)
     const proxy = await priceContract.deployed()
     // connect proxies to tokens
     mock.proxyAddress = proxy.address
@@ -60,7 +60,7 @@ module.exports = async function (deployer, network, accounts) {
         await setupTokenAndPriceOracle(erc20Mocks.dai, deployer, DaiMock, DaiAggregatorMock, overwriteOptions)
         await setupTokenAndPriceOracle(erc20Mocks.bnb, deployer, BnbMock, BnbAggregatorMock, overwriteOptions)
         // setup ETH price oracle
-        await deployer.deploy(EthAggregatorMock, 8, overwriteOptions)
+        await deployer.deploy(EthAggregatorMock, erc20Mocks.eth.decimals, erc20Mocks.eth.initialProxyValue, overwriteOptions)
         const ethProxy = await EthAggregatorMock.deployed()
         // setup proxies
         await chainlinkPriceOracle.setEthTokenProxy(ethProxy.address, await ethProxy.decimals());
