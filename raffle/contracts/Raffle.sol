@@ -575,6 +575,9 @@ contract Raffle is Adminable, IRandomnessReceiver {
             // clear assigned tokens
             delete bidsByToken[token];
         }
+
+        // pushes to winnerAddress => timestamps[], so that later a winner could find all games it has won
+        winnerTimestamps[_winner].push(timestamp);
         
         // clear as much as possible
         uint256 playersLen = players.length;
