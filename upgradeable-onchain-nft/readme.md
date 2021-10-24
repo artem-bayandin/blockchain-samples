@@ -25,6 +25,15 @@ Solution: code another implementation of INftImageResolver with internal mapping
 Solution: set address of INftMintingAllowance in IAppBeacon to address(0).
 <br/>
 <br/>
+The diagram below shows major calls inside the system. Red circle is a kind of "entry point" for a user - a user need to a) mint a token; b) see it. All the other calls inside a system are restricted to a particular caller (when needed). I hope I have not missed a lot.
+<br/>
+<br/>
+*.drawio* and *.png* files of the diagram ara available in the repo in `diagrams` folder.
+<br/>
+<br/>
+![alt text](https://github.com/artem-bayandin/blockchain-samples/blob/master/upgradeable-onchain-nft/diagrams/Component%20and%20DataFlow.png?raw=true)
+<br/>
+<br/>
 **Have Fun!**
 
 ## IAppBeacon
