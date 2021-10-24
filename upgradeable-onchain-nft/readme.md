@@ -1,6 +1,6 @@
 # Upgradeable On-chain NFT
 
-This is a sample of Solidity architecture, that allows to build an upgradeable NFT, storing data on-chain. Contains a list of interfaces and their implementations, all the interfaces are described below.
+This is a sample of Solidity architecture, that allows to build an upgradeable NFT, storing data on-chain. Contains a list of interfaces and their implementations (all the interfaces are described below), plus a deployment script.
 <br/>
 <br/>
 Any* item of the system might be replaced with its updated version. When replaced, its new address should be registered in IAppBeacon instance.
