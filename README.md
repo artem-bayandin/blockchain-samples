@@ -1,4 +1,4 @@
-Samples of my code.
+Samples of my code in blockchain domain. General tech stack is: Solidity, React, Truffle, Chai.
 
 ## Raffle
 
