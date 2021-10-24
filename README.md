@@ -2,7 +2,7 @@ Samples of my code.
 
 ## Raffle
 
-*published*
+*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/raffle)*
 
 Covers the next topics:
 
@@ -18,7 +18,7 @@ Covers the next topics:
 
 ## Upgradeable On-chain NFT
 
-*will be published on the 25th of October, 2021*
+*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/upgradeable-onchain-nft)*
 
 Covers the next topics:
 
