@@ -1,4 +1,7 @@
 Samples of my code in blockchain domain. General tech stack is: Solidity, React, Truffle, Chai.
+<br/>
+<br/>
+You might be also interested in my *standalone contract samples*, the latter are available in my **[blockchain-utils](https://github.com/artem-bayandin/blockchain-utils)** repo.
 
 ## Raffle
 
@@ -25,7 +28,7 @@ Covers the next topics:
 - total of 7 Solidity contracts: NFT, TokenURI, Image, Storage, Manager, Allowance, Beacon;
 - interfaces;
 - building metadata and image on-chain;
-- ability to easily replae ANY of the contracts, even NFT one. In addition, you may switch restrictions to mint NFTs, the logic of minting, the data that is stored, the way metadata is stored and retrieved, the way an image is being built and shown on a marketplace like Opensea.
+- ability to easily replace ANY of the contracts, even NFT one. In addition, you may switch restrictions to mint NFTs, the logic of minting, the data that is stored, the way metadata is stored and retrieved, the way an image is being built and shown on a marketplace like Opensea.
 
 ## 'Forum'-like app
 
