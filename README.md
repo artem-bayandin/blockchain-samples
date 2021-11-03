@@ -16,7 +16,7 @@ Covers the next topics:
 - randomness covered via oracle or manually;
 - truffle tests and deployment;
 - game statuses, anti-reentrancy defense, and some other basic options/vulnerabilities are covered;
-- 1058 lines of code, 4 contracts, 2 interfaces, 415 lines of tests to cover 50% of the app, 100 lines of deployment script.
+- **1058 lines of code, 100 lines of deployment scripts**, 4 contracts, 2 interfaces, 415 lines of tests to cover 50% of the app.
 - an enterprise-styled code.
 
 ## Upgradeable On-chain NFT
@@ -40,4 +40,5 @@ Covers the next topics:
 - upgradeable contracts and routers, upgradeable beacons,
 - logic and data storage contracts separation,
 - 2 separate upgradeable NFT contracts with marketplaces, storing data on-chain and off-chain,
-- earnings for users for their activities.
+- earnings for users for their activities;
+- **1800 lines of code, 350 lines of deployment scripts**, 13 contracts, 13 contract-wrappers for tests (with additional public methods), 11 interfaces, 4 abstract base contracts (on November 3, 2021).
