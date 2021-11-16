@@ -1,7 +1,16 @@
 Samples of my code in blockchain domain. General tech stack is: Solidity, React, Truffle, Chai.
-<br/>
-<br/>
+
+Code might not be gas-efficient, nor it has to be protected against all the 100500% of existing vulnerabilities. It's just a sample. So if you think "it shouldn't be done like this", just ask me and I'll explain why this or that decision has been taken.
+
 You might be also interested in my *standalone contract samples*, the latter are available in my **[blockchain-utils](https://github.com/artem-bayandin/blockchain-utils)** repo.
+
+Enjoy!
+
+## 'Replaceable' contracts
+
+*coming soon* <sub><sup>(late November, 2021)</sup></sub>
+
+Mechanics to replace a contract at a specific address. Something like `deploy(myContractV2).at(address(myContractV1))`. Possibly extended to `deploy(myContractV2).at(addressFromMyListOfAddresses)`
 
 ## Raffle
 
