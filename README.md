@@ -51,4 +51,4 @@ Covers the next topics:
 - logic and data storage contracts separation,
 - 2 separate upgradeable NFT contracts with marketplaces, storing data on-chain and off-chain,
 - earnings for users for their activities;
-- **1800 lines of code, 350 lines of deployment scripts, 500 lines of integration tests** (tests cover just basic 'green-ish' functionality), 13 contracts, 13 contract-wrappers for tests (with additional public methods), 11 interfaces, 4 base abstract contracts (on November 3, 2021).
+- **2000 lines of code, 500 lines of deployment scripts, 720 lines of integration tests** (tests cover just basic 'green-ish' functionality), 13 contracts, 13 contract-wrappers for tests (with additional public methods), 11 interfaces, 4 base abstract contracts (on November 3, 2021).
