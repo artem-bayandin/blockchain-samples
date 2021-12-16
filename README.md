@@ -6,15 +6,15 @@ You might be also interested in my *standalone contract samples*, the latter are
 
 Enjoy!
 
-## 'Replaceable' contracts
+## 'Replaceable' contracts (metamorphic)
 
-*coming soon* <sub><sup>(November, 2021, 3rd decade)</sup></sub>
+*coming soon* <sub><sup>(Dec, 2021, 3rd decade)</sup></sub>
 
 Mechanics to replace a contract at a specific address. Something like `deploy(myContractV2).at(address(myContractV1))`. Possibly extended to `deploy(myContractV2).at(addressFromMyListOfAddresses)`
 
 ## Diamond pattern
 
-*coming soon* <sub><sup>(November, 2021, 3rd decade)</sup></sub>
+*coming soon* <sub><sup>(Dec, 2021, 3rd decade)</sup></sub>
 
 A buzz-pattern for managing upgradeability and execution delegation in Solidity.
 
