@@ -1,0 +1,36 @@
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Swap the comments on the following lines if you wish to use zero-installs
+# In that case, don't forget to run `yarn config set enableGlobalCache false`!
+# Documentation here: https://yarnpkg.com/features/caching#zero-installs
+
+#!.yarn/cache
+.yarn
+.pnp.*
+
+# the next comes from initialization of hardhat with ts
+
+node_modules
+.env
+
+# Hardhat files
+/cache
+/artifacts
+/src/hardhat
+
+# TypeChain files
+/typechain
+/typechain-types
+/types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments

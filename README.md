@@ -54,7 +54,14 @@ Covers the next topics:
 
 - cloning contracts and using different types of proxies,
 - upgradeable contracts and routers, upgradeable beacons,
-- logic and data storage contracts separation,
+- logic and data storage contracts separation (in v1),
 - 2 separate upgradeable NFT contracts with marketplaces, storing data on-chain and off-chain,
 - earnings for users for their activities;
-- **2000 lines of code, 500 lines of deployment scripts, 720 lines of integration tests** (tests cover just basic 'green-ish' functionality), 13 contracts, 13 contract-wrappers for tests (with additional public methods), 11 interfaces, 4 base abstract contracts (on November 3, 2021).
+- v.1: **2000 lines of code, 500 lines of deployment scripts, 720 lines of integration tests** (tests cover just basic 'green-ish' functionality), 13 contracts, 13 contract-wrappers for tests (with additional public methods), 11 interfaces, 4 base abstract contracts (on November 3, 2021).
+- v.2 (May, 2025): **1250 lines of sol code, 760 lines of deployment scripts, 3120 lines of tests**
+
+## Named proxy
+
+*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/named-proxy)*
+
+Given standard OZ Beacons, it may only store a single reference to an implementation. But what if you wish to store all your project references in a single contract, and fetch it via proxies?
