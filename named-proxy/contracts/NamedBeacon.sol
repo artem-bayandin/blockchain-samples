@@ -1,14 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-/// @title Beacon
+interface INamedBeacon {
+    /// @notice Returns an address of an implementation, registered under _referenceId. If no reference is found, returns address(0).
+    /// @param _referenceId Unique reference id (usually, name) of the referenced contract
+    function getImplementation(bytes32 _referenceId) external view returns (address _implementation);
+
+    /// @notice Registers implementation _implementation under given _referenceId.
+    /// @param _referenceId Unique name of the referenced contract
+    /// @param _implementation Address of implementation
+    function registerImplementation(bytes32 _referenceId, address _implementation) external;
+}
+
+/// @title NamedBeacon
 /// @notice A Beacon with all the references registered.
 /// @dev Seems to be a good version, so just needs minor changes to be used under proxy.
 /// @dev Review visibility modifiers.
 /// @dev Simplified version not to store list of registered names.
 /// @dev Registered names should be fetched from raised events `ImplementationRegistered(string indexed name, address previous, address current)`
 /// @dev For ref name use `keccak256(abi.encodePacked("MY_REF_NAME"))`
-contract Beacon {
+contract NamedBeacon {
     /// @notice Owner of the beacon
     /// @dev Should be set in ctor or init function
     address public owner;

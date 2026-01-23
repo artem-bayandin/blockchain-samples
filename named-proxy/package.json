@@ -1,6 +1,6 @@
 {
   "name": "named-proxy",
-  "packageManager": "yarn@4.6.0",
+  "packageManager": "yarn@4.9.2",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
@@ -26,5 +26,15 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.3.0",
     "@openzeppelin/contracts-upgradeable": "^5.3.0"
+  },
+  "scripts": {
+    "NOTICE": "echo 'SOME OF SCRIPTS MIGHT NOT WORK, AS JUST BEING COPIED FROM MY OTHER PROJECT'",
+    "hcf": "hardhat compile --force",
+    "ht": "hardhat test",
+    "ht:all": "hardhat test test/*",
+    "size": "run hardhat size-contracts",
+    "coverage": "hardhat coverage",
+    "hnode": "hardhat node --verbose",
+    "hrun": "hardhat run"
   }
 }

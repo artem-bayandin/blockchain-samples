@@ -1,8 +1,8 @@
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import { expect } from 'chai'
 import hre from 'hardhat'
-import { BeaconRefName } from '../scripts/shared'
-import { Beacon } from '../typechain-types'
+import { NamedBeaconRefName } from '../scripts/shared'
+import { NamedBeacon } from '../typechain-types'
 import { ContractTransactionResponse, ZeroAddress } from 'ethers'
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers'
 import { verifyEvent } from './shared'
@@ -14,7 +14,7 @@ const TEST_REF_2 = '0x4ca70862e886132db4ab441006b70464222cb9fee7da3742ddf128dcf1
 const EVENT_IMPLEMENTATION_REGISTERED = 'ImplementationRegistered'
 
 describe(`Beacon`, function () {
-    let beacon: Beacon & {
+    let beacon: NamedBeacon & {
         deploymentTransaction(): ContractTransactionResponse
     }
     let owner: HardhatEthersSigner
@@ -25,7 +25,7 @@ describe(`Beacon`, function () {
     async function deployFixture() {
         const [owner, account1, account2, account3] = await hre.ethers.getSigners()
 
-        const Beacon = await hre.ethers.getContractFactory(BeaconRefName)
+        const Beacon = await hre.ethers.getContractFactory(NamedBeaconRefName)
         const beacon = await Beacon.deploy(await owner.getAddress())
 
         return { beacon, owner, account1, account2, account3 }

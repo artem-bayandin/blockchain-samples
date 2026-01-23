@@ -1,8 +1,8 @@
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import { expect } from 'chai'
 import hre from 'hardhat'
-import { BeaconRefName, Implementation1RefName, Implementation2RefName, NamedBeaconProxyRefName } from '../scripts/shared'
-import { Beacon, Implementation1, Implementation2, NamedBeaconProxy } from '../typechain-types'
+import { NamedBeaconRefName, Implementation1RefName, Implementation2RefName, NamedBeaconProxyRefName } from '../scripts/shared'
+import { NamedBeacon, Implementation1, Implementation2, NamedBeaconProxy } from '../typechain-types'
 import { ContractTransactionResponse } from 'ethers'
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers'
 import { encodeInitData } from './shared'
@@ -13,7 +13,7 @@ const TEST_REF_1 = '0x088b4f879c7de0a72bd8e2e1db4c05646e10ad3f1f6513c52d13fa7c44
 const TEST_REF_2 = '0x4ca70862e886132db4ab441006b70464222cb9fee7da3742ddf128dcf1897405'
 
 describe(`NamedBeaconProxy`, function () {
-    let beacon: Beacon & {
+    let beacon: NamedBeacon & {
         deploymentTransaction(): ContractTransactionResponse
     }
     let impl1: Implementation1 & {
@@ -43,7 +43,7 @@ describe(`NamedBeaconProxy`, function () {
         const [owner, account1, account2, account3] = await hre.ethers.getSigners()
 
         // deploy beacon
-        const Beacon = await hre.ethers.getContractFactory(BeaconRefName)
+        const Beacon = await hre.ethers.getContractFactory(NamedBeaconRefName)
         const beacon = await Beacon.deploy(await owner.getAddress())
 
         // deploy ver1 impl
@@ -65,8 +65,8 @@ describe(`NamedBeaconProxy`, function () {
         const beaconAddress = await beacon.getAddress()
 
         const Proxy = await hre.ethers.getContractFactory(NamedBeaconProxyRefName)
-        const proxy1 = await Proxy.deploy(beaconAddress, encodeInitData(abi1, 'initialize', [ initVal1 ]), TEST_REF_1)
-        const proxy2 = await Proxy.deploy(beaconAddress, encodeInitData(abi2, 'initialize', [ initVal2 ]), TEST_REF_2)
+        const proxy1 = await Proxy.deploy(beaconAddress, TEST_REF_1, encodeInitData(abi1, 'initialize', [ initVal1 ]))
+        const proxy2 = await Proxy.deploy(beaconAddress, TEST_REF_2, encodeInitData(abi2, 'initialize', [ initVal2 ]))
 
         const proxied1 = await hre.ethers.getContractAt(Implementation1RefName, await proxy1.getAddress()) as any as Implementation1
         const proxied2 = await hre.ethers.getContractAt(Implementation2RefName, await proxy2.getAddress()) as any as Implementation2
