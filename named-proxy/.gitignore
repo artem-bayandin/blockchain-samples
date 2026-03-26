@@ -10,7 +10,6 @@
 # Documentation here: https://yarnpkg.com/features/caching#zero-installs
 
 #!.yarn/cache
-.yarn
 .pnp.*
 
 # the next comes from initialization of hardhat with ts
@@ -22,6 +21,7 @@ node_modules
 /cache
 /artifacts
 /src/hardhat
+/compiled
 
 # TypeChain files
 /typechain
@@ -31,6 +31,12 @@ node_modules
 # solidity-coverage files
 /coverage
 /coverage.json
+coverage.json
 
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments
+
+# private
+*.txt
+.keys.json
+.DS_Store

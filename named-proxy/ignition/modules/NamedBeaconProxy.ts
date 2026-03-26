@@ -1,18 +1,19 @@
 // This setup uses Hardhat Ignition to manage smart contract deployments.
 // Learn more about it at https://hardhat.org/ignition
 
-import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { NamedBeaconProxyRefName } from "../../scripts/shared";
+import { buildModule } from '@nomicfoundation/hardhat-ignition/modules'
+import { NamedBeaconProxyRefName } from '../../scripts/shared.ts'
 
-const Module = buildModule("DeployNamedBeaconProxy", (m) => {
+const Module = buildModule('DeployNamedBeaconProxy', (m) => {
   // get parameters
-  const beacon = m.getParameter("beacon");
-  const data = m.getParameter("data");
-  const implementationName = m.getParameter("implementationName");
+  const beacon = m.getParameter('beacon')
+  const data = m.getParameter('data')
+  const implementationName = m.getParameter('implementationName')
   // deploy smart contract
-  const namedBeaconProxy = m.contract(NamedBeaconProxyRefName, [beacon, data, implementationName]);
+  // constructor(address _beacon, bytes32 _implementationName, bytes memory _data) payable 
+  const namedBeaconProxy = m.contract(NamedBeaconProxyRefName, [beacon, implementationName, data])
   // return result
-  return { namedBeaconProxy };
-});
+  return { namedBeaconProxy }
+})
 
-export default Module;
+export default Module
