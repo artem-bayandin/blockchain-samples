@@ -18,6 +18,10 @@ Delegate work from your system to one of registered implementations. The origina
 
 Refer to [mudgen/diamond](https://github.com/mudgen/diamond)
 
+### My improved implementation of Diamond with the latest Hardat and Solidity
+
+*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/diamond-2535)*
+
 ## Named proxy (2025)
 
 *[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/named-proxy)*
