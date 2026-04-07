@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.33;
+pragma solidity >=0.8.0 <0.9.0;
 /************************************************************************************************\
 * Author: Artem Bayandin <bayandin.artem.official@gmail.com> (https://github.com/artem-bayandin) *
 \************************************************************************************************/
