@@ -1,35 +1,29 @@
-Samples of my code in blockchain domain. General tech stack is: Solidity, React, Hardhat (previously Truffle), Chai.
+Samples of my code in blockchain domain. General tech stack is: Solidity, React, Hardhat.
 
 Code might not be gas-efficient, nor it has to be protected against all the 100500% of existing vulnerabilities. It's just a sample. So if you think "it shouldn't be done like this", just ask me and I'll explain why this or that decision has been taken.
 
-You might be also interested in my *standalone contract samples*, the latter are available in my **[blockchain-utils](https://github.com/artem-bayandin/blockchain-utils)** repo.
+Some code exists in current repo, another is split within other repos.
 
-Enjoy!
+## Named proxy (2026)
 
-## 'Replaceable' contracts (metamorphic)
-
-Mechanics to replace a contract at a specific address. Yes, REPLACE, not just "upgrade". A funky project (clone), that was forgotten. Moreover, with the Solidity updates (somewhere in 0.8.[0..28]), it might be not possible to achieve this with the latest Sol features.
-
-Refer to [0age/metamorphic](https://github.com/0age/metamorphic)
-
-## Diamond pattern (proxy)
-
-Delegate work from your system to one of registered implementations. The original code might be improved, as you will definitely need to split some base libraries, which I've implemented in my other projects, but has not yet pushed it here.
-
-Refer to [mudgen/diamond](https://github.com/mudgen/diamond)
-
-### My improved implementation of Diamond with the latest Hardat and Solidity
-
-*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/diamond-2535)*
-
-## Named proxy (2025)
-
-*[the code and extended description is here](https://github.com/artem-bayandin/blockchain-samples/tree/master/named-proxy)*
+*[the code and extended description is here](https://github.com/artem-bayandin/named-beacon-proxy)*
 
 Given standard OZ Beacons, it may only store a single reference to an implementation. But what if you wish to store all your project references in a single contract, and fetch it via proxies?
 
 So, here goes an upgraded version of Beacon - `NamedBeacon`, which implements `setImplementation(bytes32 _refName, address _addr) external` and `getImplementation(bytes32 _refName) view returns (address _impl)`.
 Then goes a specifically improved `NamedBeaconProxy` - which stores an immutable ref to the beacon, as well as an immutable reference id for the implementation it refers to. Immutability allows to avoid storage collision, as well as strictly assign the beacon and implementation ref id to the proxy.
+
+## Diamond-2535 (2026)
+
+*[the code and extended description is here](https://github.com/artem-bayandin/diamond-2535)*
+
+Delegate work from your system to one of registered implementations. The original code was slightly improved as well as upgraded to up-to-date versions of Hardhat (3.1.6) and Solidity (0.8.33).
+
+Refer to [mudgen/diamond](https://github.com/mudgen/diamond)
+
+## Utils (2021)
+
+During code development, some interesting gems happen to be created, and I've put some into my [blockchain-utils](https://github.com/artem-bayandin/blockchain-utils) repo (for now includes Roles management, and some interfaces for Chainlink ecosystem).
 
 ## Raffle (2021)
 
@@ -58,3 +52,9 @@ Covers the next topics:
 - building metadata and image on-chain;
 - ability to easily replace ANY of the contracts, even NFT one. In addition, you may switch restrictions to mint NFTs, the logic of minting, the data that is stored, the way metadata is stored and retrieved, the way an image is being built and shown on a marketplace like Opensea;
 - **600 lines of code, 100 lines of deployment scripts**, 7 contracts, 7 interfaces, 1 base abstract contract.
+
+## Reference to 'Replaceable' contracts (metamorphic)
+
+Mechanics to replace a contract at a specific address. Yes, REPLACE, not just "upgrade". A funky project (clone), that was forgotten. Moreover, with the Solidity updates (somewhere in 0.8.[0..28]), it might be not possible to achieve this with the latest Sol features.
+
+Refer to [0age/metamorphic](https://github.com/0age/metamorphic)
